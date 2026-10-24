@@ -4,13 +4,31 @@
 a design-led shell with approvals you can see, work you can follow, and
 conversations that outlive the process.
 
+> ### Status: v0.1.0 — early work in progress
+>
+> This is a **very early build**, published to show the direction and the
+> engineering, not because it is ready for daily use. Expect rough edges, and
+> expect the interface, the branding and the icon to change.
+>
+> **What works:** the native shell and every product surface render and are
+> exercised in demo mode — Today, tasks, reminders, focus, schedules, calendar,
+> plan, review, memory, plugins, palette, capture. 17 offline test suites and a
+> lint gate pass.
+>
+> **What is not usable yet:** a full agent turn has not been run end-to-end
+> against a live provider in this repository; image generation and connector
+> pages exist but are hidden because the current engines do not back them;
+> voice, embedding recall and closed-app scheduling are not implemented. See
+> [Limitations, honestly](#limitations-honestly).
+
 ![Mantel, on the overview page](docs/screenshots/home.png)
 
 > Unofficial and unaffiliated with any model vendor. The shell follows a
 > measured design language; see [Design credit](#design-credit).
 >
-> Where the product goes next — a day-planner agent with auditable memory and a
-> plugin system — is in [docs/VISION.md](docs/VISION.md).
+> The product thesis — a day-planner agent with auditable memory and a plugin
+> system — is in [docs/VISION.md](docs/VISION.md), and most of it now exists in
+> the app. The gap between that document and this build is listed below.
 
 ## Why this exists
 
@@ -106,10 +124,11 @@ a native Linux surface — without owning the intelligence itself.
 - Native GTK4 + libadwaita, measured against a design system
   ([docs/DESIGN.md](docs/DESIGN.md)) at 1744 × 1168.
 - **Scheduled** prompts on a five-field cron, run by an in-app timer.
-- **Connectors** (MCP) and **Skills**, with the engine's own stores as the
-  source of truth.
-- Screen capture attached to a prompt, image generation with a gallery, quick
-  chat on a global hotkey, desktop notifications, light/dark/system themes.
+- Screen capture attached to a prompt, quick chat on a global hotkey, desktop
+  notifications, light/dark/system themes.
+- Capability-gated surfaces: pages appear only when the selected engine can
+  back them. Image generation, connectors and skills exist as code but are
+  currently hidden, because neither shipped engine advertises them.
 
 ## Screenshots
 
@@ -133,8 +152,8 @@ stores are engine-independent.
 
 | Engine | Status | Notes |
 |---|---|---|
-| **Pi** ([pi.dev](https://pi.dev)) | **default engine** | `pi --mode rpc`: streaming, tool events, models, effort, abort, sessions, steering, compaction, crash recovery, and **pre-execution approvals** through the shipped gate extension (`pi-extensions/approvals.ts`). Verified against `pi` 1.4.0 and a protocol fake. |
-| **Gemini API** | **implemented (chat, streaming, tools, approvals)** — set `GEMINI_API_KEY` | Speaks the public REST streaming API directly, with no third-party Python dependency. A real tool loop: `read_file` runs freely; `write_file` and `run_command` ask through the same approval cards every other engine uses, and a deny means the tool never runs. Verified against a local fake API — no key needed in CI. |
+| **Pi** ([pi.dev](https://pi.dev)) | **default engine** | `pi --mode rpc`: streaming, tool events, models, effort, abort, sessions, steering, compaction, crash recovery, and **pre-execution approvals** through the shipped gate extension (`pi-extensions/approvals.ts`). Protocol-verified against `pi` 1.4.0 (handshake, session, extension load) and against a protocol fake for full turns. |
+| **Gemini API** | **implemented (chat, streaming, tools, approvals)** — set `GEMINI_API_KEY` | Speaks the public REST streaming API directly, with no third-party Python dependency. A real tool loop: `read_file` runs freely; `write_file` and `run_command` ask through the same approval cards every other engine uses, and a deny means the tool never runs. Verified against a local fake API — no key or network needed in CI. |
 
 Swapping engines changes what the app *offers*, not how it feels: the same
 approval cards, work panel and transcript, and only the surfaces the engine can
@@ -145,8 +164,9 @@ halves of that.
 ## Run it
 
 ```bash
-git clone https://github.com/<you>/mantel && cd mantel
-./packaging/install.sh       # launcher + desktop entry, no root
+git clone https://github.com/RealNarcissus/mantel && cd mantel
+python3 -m app.main --demo  # the fastest way to see it
+./packaging/install.sh      # optional: launcher + desktop entry, no root
 mantel
 ```
 
@@ -186,7 +206,7 @@ supply your own copies: [assets/README.md](assets/README.md).
 ```
 ┌──────────────────────────────┐          ┌─────────────────────────────┐
 │  GTK4 + libadwaita shell     │          │  engine adapter             │
-│                              │          │  (Pi RPC · Gemini SDK · …)  │
+│                              │          │  (Pi RPC · Gemini API · …)  │
 │  rail · composer · pages     │  JSONL   │                             │
 │    │      │                  │ ────────►│  pi --mode rpc              │
 │    │      └─ session ────────┼─ events  │  multi-provider models      │
@@ -221,8 +241,10 @@ Three findings from that study shaped this client:
 1. **An engine that can ask mid-turn makes approvals real.** Pi's extension UI
    protocol lets the gate stop a tool before it runs, so "Deny" means the call
    never happened — not that it failed and was reported afterwards.
-2. **Permissions live in a config file the client can own.** So a grant is a
-   rule the engine honours, not a flag the UI pretends to keep.
+2. **A gate inside the engine is stronger than a permission file the client
+   writes.** Approvals became a Pi extension injected into the session, with
+   workspace-scoped rules — the vendor permission file this project started
+   with has been deleted.
 3. **The stream is one-directional and accepts a single input event.** So
    approvals cannot pause a turn — which is exactly the gap Pi's extension UI
    protocol fills.
@@ -246,12 +268,26 @@ recoverable thread.
 
 ## Limitations, honestly
 
-- **Durability is not wired yet.** Conversations survive restarts through a
-  local store, but not the way Pi Durable commits state; scheduled prompts only
-  run while the app is open.
-- **No voice yet.** It arrives with the Gemini API engine (Live API).
-- **Third-party assets are optional and unshipped**, so a fresh clone is
-  typographically plain by design.
+- **Early build.** The demo surfaces are real, but the app has not been lived in.
+  Interaction details, copy and the information hierarchy will change.
+- **Branding is a placeholder.** The icon, the wordmark and parts of the visual
+  identity are still to be designed; fonts and the icon glyph set are not
+  redistributed here (see [assets/README.md](assets/README.md)), so a fresh
+  clone renders in system fonts with stock symbolic icons.
+- **No live agent run in this repo.** Pi turns and Gemini turns are verified
+  against protocol-faithful fakes, not against a provider account. The Pi
+  binary is not vendored. You need your own `pi` login or `GEMINI_API_KEY`.
+- **Image generation, connectors and skills are not reachable** with the two
+  shipped engines: the pages exist, the capability system hides them.
+- **No voice.** The Gemini Live API is not wired.
+- **Knowledge retrieval is lexical**, not embedding-based, and says so.
+- **Schedules fire only while the app is open**; a missed slot runs once at the
+  next launch. There is no background daemon.
+- **Plugins are early**: commands and declarative panels only. No marketplace,
+  no markup, no per-plugin sandbox — see [docs/PLUGINS.md](docs/PLUGINS.md) for
+  the honest security model.
+- **Packaging is unproven**: `packaging/install.sh` exists, but has not been
+  tested on a machine other than the development one.
 
 ## Design credit
 

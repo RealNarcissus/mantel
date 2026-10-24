@@ -50,8 +50,8 @@ gh repo edit --description \
   1280×640.
 - **Topics**: as above.
 - **Discussions**: optional; issues are enough for a portfolio piece.
-- **Releases**: tag `v0.2.0` once someone else has run it end to end with a
-  connected engine.
+- **Releases**: tag `v0.1.0` now, and keep the README's work-in-progress banner
+  until a live provider run has been done by someone other than the author.
 
 ## After publishing
 
