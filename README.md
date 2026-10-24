@@ -36,6 +36,11 @@ a native Linux surface — without owning the intelligence itself.
   that turns "pay the invoice tomorrow at 5pm" into a dated task.
 - **Focus timer** lives on that screen, because a timer on its own page is a
   timer nobody starts.
+- **Command palette** (`Ctrl+K`): type what you mean — a task ("pay the
+  invoice tomorrow"), a note, a question, a page, or a command. It is also the
+  capture path from outside the app: `mantel --capture "call the dentist
+  tomorrow"` adds a task without opening a window, ready for a compositor
+  hotkey.
 - The older overview dashboard is still there as *Goals* while the two
   surfaces merge.
 
@@ -80,7 +85,7 @@ a native Linux surface — without owning the intelligence itself.
 | ![Task mode](docs/screenshots/chat.png) | ![Tasks](docs/screenshots/tasks.png) |
 | ![Create](docs/screenshots/create.png) | ![Scheduled](docs/screenshots/schedule.png) |
 | ![Memory](docs/screenshots/memory.png) | ![Settings](docs/screenshots/settings.png) |
-| ![Overview dashboard](docs/screenshots/home.png) | ![Focus and agent](docs/screenshots/today.png) |
+| ![Overview dashboard](docs/screenshots/home.png) | ![Command palette](docs/screenshots/palette.png) |
 
 Every image is an offscreen render of the real widget tree, produced by
 `tools/make_screenshots.py`. They use demo data, so no real account or path

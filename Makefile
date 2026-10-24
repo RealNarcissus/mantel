@@ -26,7 +26,7 @@ install:
 test-offline:
 	@set -e; for t in test_schedules test_changes test_context_fallback \
 	          test_extras test_signin test_memory test_todos test_focus \
-	          test_engine_adapter; do \
+	          test_palette test_engine_adapter; do \
 	          echo "== $$t"; $(PYTHON) tests/$$t.py; done
 
 test: test-offline

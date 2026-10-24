@@ -73,6 +73,7 @@ def main() -> int:
         jobs = [(page, "light") for page in PAGES]
         jobs.append(("home", "dark"))
         jobs.append(("quick", "light"))
+        jobs.append(("palette", "light"))
         queue = list(jobs)
 
         def step():
@@ -82,8 +83,8 @@ def main() -> int:
                 app.quit()
                 return False
             page, scheme = queue.pop(0)
-            name = "quickchat" if page == "quick" else (
-                page if scheme == "light" else "dark")
+            name = {"quick": "quickchat", "palette": "palette"}.get(
+                page, page if scheme == "light" else "dark")
 
             if page == "quick":
                 from app.quickchat import QuickChat  # noqa: PLC0415
@@ -91,6 +92,9 @@ def main() -> int:
                 target = QuickChat(app, engine_mod.Engine())
                 target.set_default_size(720, 420)
                 target.present()
+            elif page == "palette":
+                target = _make_window(app, page="today", scheme=scheme)
+                target.open_palette("pay the invoice tomorrow")
             else:
                 target = _make_window(app, page=page, scheme=scheme)
 

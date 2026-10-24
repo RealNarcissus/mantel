@@ -372,6 +372,22 @@ label.md-h3 {{ font-size: 16px; font-weight: 600; }}
   border-color: rgba(140, 47, 47, 0.35);
 }}
 .approval-note {{ font-size: 11.5px; color: @g-text_dim; }}
+.palette-body {{
+  background: #FFFFFF;
+  border: 1px solid rgba(0, 0, 0, 0.14);
+  border-radius: 16px;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.22);
+}}
+.palette-row {{
+  background-image: none;
+  background: transparent;
+  border-radius: 10px;
+  padding: 8px 10px;
+  border: none;
+  min-height: 30px;
+}}
+.palette-row:hover {{ background: rgba(0, 0, 0, 0.05); }}
+.palette-row.selected {{ background: @g-field; }}
 .task-tick {{
   background-image: none;
   background: transparent;

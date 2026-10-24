@@ -129,8 +129,9 @@ is the chassis. Here is what hangs on it.
 > projects and reminders (`app/todos.py`); the Tasks page; the reminder runner;
 > Memory v1; and **Today** as the home screen, merging today's tasks, the week
 > ahead, undated work, remembered facts, the agent card and a focus timer
-> (`app/pages/today.py`, `app/focus.py`). Capture-from-anywhere and the command
-> palette are still to come.
+> (`app/pages/today.py`, `app/focus.py`); **capture and the command palette**
+> (`app/palette.py`, `mantel --capture …`). That completes P0 except for
+> calendar reading, which is the next phase.
 
 | # | Feature | Why it earns the open | Acceptance |
 |---|---|---|---|

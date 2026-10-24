@@ -21,6 +21,7 @@ from app import account as account_mod
 from app import approval as approval_mod
 from app import chat_view, composer, engine as engine_mod
 from app import permissions
+from app import palette as palette_mod
 from app import session as session_mod
 from app import sidebar as sidebar_mod
 from app import theme, topbar as topbar_mod
@@ -183,8 +184,21 @@ class Window(Adw.ApplicationWindow):
         bottom.append(self.composer)
         content.append(bottom)
 
-        root.append(content)
+        self._overlay = Gtk.Overlay()
+        self._overlay.set_child(content)
+        self._overlay.set_hexpand(True)
+        self._overlay.set_vexpand(True)
+        root.append(self._overlay)
         self.set_content(root)
+
+        # --- command palette ----------------------------------------------
+        self.palette = palette_mod.Palette(
+            on_run=self._run_palette_action,
+            on_close=self._close_palette,
+            pages=[page[0] for page in self._pages_for_engine])
+        self.palette.set_visible(True)
+        self._overlay.add_overlay(self.palette)
+        self._install_palette_shortcut()
 
         from app.reminders import ReminderRunner  # noqa: PLC0415
         from app.scheduler import Scheduler  # noqa: PLC0415
@@ -1351,6 +1365,92 @@ I also added a regression test for the missing check.
             self._refresh_sidebar()
 
     # -- actions ------------------------------------------------------------
+    def _install_palette_shortcut(self) -> None:
+        controller = Gtk.ShortcutController()
+        controller.set_scope(Gtk.ShortcutScope.GLOBAL)
+
+        def bind(accel: str) -> None:
+            trigger = Gtk.ShortcutTrigger.parse_string(accel)
+            action = Gtk.CallbackAction.new(
+                lambda *_args: (self.open_palette(), True)[1])
+            controller.add_shortcut(Gtk.Shortcut.new(trigger, action))
+
+        bind("<Control>k")
+        bind("<Control>p")
+        self.add_controller(controller)
+
+    def open_palette(self, seed: str = "") -> None:
+        self.palette.open(seed)
+
+    def _close_palette(self) -> None:
+        self.composer.focus()
+
+    def _run_palette_action(self, action) -> None:
+        """Turn a palette action into the real thing."""
+        kind = getattr(action, "kind", "")
+        payload = getattr(action, "payload", "")
+
+        if kind == "navigate":
+            self._go(payload)
+            return
+        if kind == "command":
+            self._run_command(payload)
+            return
+        if kind == "ask":
+            self.composer.view.get_buffer().set_text(
+                f"[[ask]]{payload}")
+            self._go("chat")
+            self.composer.view.get_buffer().set_text(payload)
+            self.composer.focus()
+            return
+        if kind == "task":
+            from app import todos  # noqa: PLC0415
+
+            task = todos.add(payload)
+            if task is not None:
+                self._notify("Task added", task.title)
+                self._refresh_tasks()
+                self._refresh_sidebar()
+            return
+        if kind == "remind":
+            from app import todos  # noqa: PLC0415
+
+            task = todos.add(payload, remind=True)
+            if task is not None:
+                self._notify("Reminder set", task.title)
+                self._refresh_tasks()
+            return
+        if kind == "note":
+            from app import memory as memory_mod  # noqa: PLC0415
+
+            fact = memory_mod.remember(payload, source="you")
+            if fact is not None:
+                self._notify("Remembered", fact.text)
+                self._refresh_memory()
+            return
+
+    def _run_command(self, name: str) -> None:
+        if name == "new-thread":
+            self.new_chat()
+        elif name == "start-focus":
+            self._go("today")
+            page = getattr(self, "today_page", None)
+            if page is not None:
+                page.focus.start()
+        elif name == "toggle-theme":
+            self._set_theme("dark" if theme.scheme().name == "light"
+                            else "light")
+        elif name == "review-day":
+            from app import todos  # noqa: PLC0415
+
+            open_tasks = todos.all_tasks(include_done=False)
+            summary = ", ".join(task.title for task in open_tasks[:5])
+            self.new_chat()
+            self.composer.view.get_buffer().set_text(
+                "Review my day. Open tasks: " + (summary or "none") +
+                ". Ask me what to drop or defer, then propose a plan.")
+            self.composer.focus()
+
     def _install_actions(self) -> None:
         def add(name, cb, accel=None):
             action = Gio.SimpleAction.new(name, None)

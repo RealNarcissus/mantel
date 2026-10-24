@@ -174,10 +174,12 @@ def parse_due(text: str, now: float | None = None) -> tuple[float, str]:
             cleaned = _TIME24.sub("", cleaned)
 
     lowered = cleaned.lower()
+    tonight = False
     if re.search(r"\b(today|tonight)\b", lowered):
         due = base
+        tonight = "tonight" in lowered
         cleaned = re.sub(r"\b(today|tonight)\b", "", cleaned, flags=re.I)
-        if "tonight" in lowered and not has_time:
+        if tonight and not has_time:
             hour, has_time = 20, True
     elif re.search(r"\btomorrow\b", lowered):
         due = base + timedelta(days=1)
@@ -221,9 +223,19 @@ def parse_due(text: str, now: float | None = None) -> tuple[float, str]:
 
     target = due or base
     if has_time:
-        target = target.replace(hour=hour, minute=minute)
+        target = target.replace(hour=hour, minute=minute, second=0,
+                                microsecond=0)
         if due is None and target < base:
             target += timedelta(days=1)
+    elif due is not None:
+        # a day phrase with no time means a date, not the moment you typed it:
+        # "today" runs until the end of the day, everything else starts at 00:00
+        if tonight:
+            target = due.replace(hour=20, minute=0, second=0, microsecond=0)
+        elif due is base or due.day == base.day:
+            target = due.replace(hour=23, minute=59, second=0, microsecond=0)
+        else:
+            target = due.replace(hour=0, minute=0, second=0, microsecond=0)
     cleaned = " ".join(cleaned.split()).strip(" ,;:-")
     cleaned = re.sub(r"\b(in|on|at|by|next)\s*$", "", cleaned,
                      flags=re.I).strip(" ,;:-")
