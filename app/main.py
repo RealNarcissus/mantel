@@ -26,7 +26,7 @@ from app.quickchat import QuickChat  # noqa: E402
 from app.store import Store  # noqa: E402
 from app.window import Window  # noqa: E402
 
-APP_ID = "dev.gemini.GeminiDesktop"
+APP_ID = "dev.mantel.MantelDesktop"
 
 
 def _set_app_icon() -> None:
@@ -150,7 +150,7 @@ def main(argv: list[str] | None = None) -> int:
     args = ap.parse_args(argv)
 
     if args.version:
-        print("gemini-desktop 1.0")
+        print("mantel 1.0")
         return 0
 
     app = Application(workspace=args.workspace, smoke=args.smoke, demo=args.demo,

@@ -51,7 +51,8 @@ def _is_linux_executable(path: str) -> bool:
 
 def find_binary() -> str | None:
     """Locate a runnable engine: PATH first, then the app bundle from the DMG."""
-    override = os.environ.get("GEMINI_ENGINE")
+    override = (os.environ.get("MANTEL_ENGINE")
+                or os.environ.get("GEMINI_ENGINE"))
     if override and _is_linux_executable(override):
         return override
     found = shutil.which("agy")
@@ -160,8 +161,8 @@ class Engine:
         turn = Turn()
         if not self.available:
             GLib.idle_add(turn.emit, "failed",
-                          "engine binary not found — install `agy` or point "
-                          "GEMINI_ENGINE at it")
+                          "agent engine not found — install the `agy` engine or point "
+                          "MANTEL_ENGINE at it")
             return turn
 
         argv = [self.binary, "--print", prompt, "--output-format", "stream-json"]

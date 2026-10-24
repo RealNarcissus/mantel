@@ -1,9 +1,9 @@
 """Main window: navigation rail, top bar, page switching, agent wiring.
 
-The shell follows the real Gemini desktop app's structure — a navigation
-rail with the primary surfaces, a history list that marks what needs
-attention, and the account at the foot — rendered in the design language
-measured from the reference application.
+The shell is a navigation rail with the agent's primary surfaces, a history
+list that marks what needs attention, and the account at the foot, rendered in
+the design language measured for it (docs/DESIGN.md). The arrangement began as
+a study of the Gemini desktop app; the design is @UiRahMan92's.
 """
 from __future__ import annotations
 
@@ -71,7 +71,7 @@ class Window(Adw.ApplicationWindow):
             self._account = account_mod.load_account()
 
         self.set_default_size(*size)
-        self.set_title("Gemini")
+        self.set_title("Mantel")
 
         root = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=0)
         root.add_css_class("root")
@@ -453,7 +453,7 @@ I also added a regression test for the missing check.
 
     def _on_signed_out(self) -> None:
         self._account = account_mod.load_account()
-        self.sidebar.set_account("Gemini", "Not signed in", "?")
+        self.sidebar.set_account("Mantel", "Not signed in", "?")
         self._refresh_sidebar()
 
     # -- theme --------------------------------------------------------------
@@ -657,7 +657,7 @@ I also added a regression test for the missing check.
         if permissions.is_trusted(folder):
             return
         dialog = Adw.MessageDialog(
-            transient_for=self, heading="Allow Gemini to work in this folder?",
+            transient_for=self, heading="Allow the agent to work in this folder?",
             body=("The agent will be able to read and change files under "
                   f"{folder}. You can change this later in Settings."))
         dialog.add_response("deny", "Not now")
@@ -857,7 +857,7 @@ I also added a regression test for the missing check.
     def _notify_done(self) -> None:
         """Tell the desktop when a turn finishes, as the real apps do."""
         try:
-            notification = Gio.Notification.new("Gemini")
+            notification = Gio.Notification.new("Mantel")
             notification.set_body("Your turn is ready.")
             self.get_application().send_notification(None, notification)
         except Exception:  # noqa: BLE001 - notifications are best-effort
@@ -1083,10 +1083,11 @@ I also added a regression test for the missing check.
     def _show_about(self) -> None:
         self._dialog(
             "About",
-            "Gemini for Linux\n\n"
-            "A native GTK4 client built from reverse-engineered artifacts of "
-            "the Gemini desktop app: its icon font and type system, its "
-            "streaming protocol, and its bundled agent engine.")
+            "Mantel\n\n"
+            "A native GTK4 desktop for AI agents on Linux: a design-led shell "
+            "with approvals you can see, a work panel, a git-backed changed-files "
+            "view, schedules and durable conversations. It grew out of a study "
+            "of the Gemini desktop app, whose structure this shell follows.")
 
     def do_close_request(self) -> bool:
         """Stop the scheduler when the window closes."""

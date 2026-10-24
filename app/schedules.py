@@ -6,7 +6,7 @@ its own store (independent of the engine's opaque sidecars), understands a
 five-field cron expression, and fires due prompts while the app runs.
 
 The scheduler is deliberately in-process and honest about it: a schedule only
-runs while Gemini is open, and a missed slot is caught up once on the next
+runs while Mantel is open, and a missed slot is caught up once on the next
 tick rather than replayed a hundred times.
 """
 from __future__ import annotations

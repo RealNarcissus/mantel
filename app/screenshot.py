@@ -28,7 +28,7 @@ PORTAL_PATH = "/org/freedesktop/portal/desktop"
 def _output_dir() -> Path:
     base = Path(os.environ.get("XDG_PICTURES_DIR")
                 or (Path.home() / "Pictures"))
-    for cand in (base / "Gemini" / "screenshots",
+    for cand in (base / "Mantel" / "screenshots",
                  Path(tempfile.gettempdir()) / "gemini-shots"):
         try:
             cand.mkdir(parents=True, exist_ok=True)

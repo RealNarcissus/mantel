@@ -85,7 +85,7 @@ class Sidebar(Gtk.Box):
 
     def __init__(self, on_new=None, on_navigate=None, on_task=None,
                  on_open=None, on_collapse=None, on_theme=None, on_account=None,
-                 user_name: str = "Gemini", user_mail: str = "",
+                 user_name: str = "Mantel", user_mail: str = "",
                  avatar_initials: str = "G",
                  accent_icon: str = "gemini_spark"):
         super().__init__(orientation=Gtk.Orientation.VERTICAL, spacing=0)
@@ -127,7 +127,7 @@ class Sidebar(Gtk.Box):
 
         names = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
         names.set_valign(Gtk.Align.CENTER)
-        brand = Gtk.Label(label="Gemini", xalign=0)
+        brand = Gtk.Label(label="Mantel", xalign=0)
         brand.add_css_class("brand-name")
         names.append(brand)
         sub = Gtk.Label(label="Linux client", xalign=0)

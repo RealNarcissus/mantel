@@ -69,7 +69,7 @@ class QuickChat(Gtk.Window):
         head = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
         head.append(theme.icon("gem_spark", 22, tone=""))
         self.entry = Gtk.Entry()
-        self.entry.set_placeholder_text("Ask Gemini…")
+        self.entry.set_placeholder_text("Ask Mantel…")
         self.entry.set_has_frame(False)
         self.entry.set_hexpand(True)
         self.entry.set_size_request(-1, 34)

@@ -1,7 +1,7 @@
 """Schedules: recurring prompts the agent runs while the app is open.
 
 The page lists schedules from `app.schedules`, lets you create, pause, run and
-delete them, and shows the last few runs. A schedule only fires while Gemini
+delete them, and shows the last few runs. A schedule only fires while Mantel
 is running — the same contract Claude's desktop app uses for local tasks.
 """
 from __future__ import annotations

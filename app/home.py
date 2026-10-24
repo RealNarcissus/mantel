@@ -1,7 +1,7 @@
 """The home dashboard.
 
 The layout is a 1:1 restyle of the reference application measured in
-``docs/DESIGN.md`` ("Hearth"), with Gemini-flavoured content:
+``docs/DESIGN.md`` ("Hearth"), with sample content:
 
 * a hero card whose right side carries the landscape artwork,
 * a tab row (segmented control + period button),
@@ -238,7 +238,7 @@ class HomePage(Gtk.Box):
         hello.add_css_class("hero-eyebrow")
         column.append(hello)
 
-        heading = Gtk.Label(label="Gemini", xalign=0)
+        heading = Gtk.Label(label="Mantel", xalign=0)
         heading.add_css_class("hero-title")
         heading.set_margin_top(6)
         column.append(heading)

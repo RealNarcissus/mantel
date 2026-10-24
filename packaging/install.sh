@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Install Gemini for Linux for the current user (no root required).
+# Install Mantel for the current user (no root required).
 #
 #   ./packaging/install.sh [--uninstall]
 #
@@ -7,12 +7,12 @@
 # the application menu and can be bound to a global shortcut.
 set -euo pipefail
 
-APP_ID="dev.gemini.GeminiDesktop"
+APP_ID="dev.mantel.MantelDesktop"
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BIN_DIR="${HOME}/.local/bin"
 APP_DIR="${HOME}/.local/share/applications"
 ICON_ROOT="${HOME}/.local/share/icons/hicolor"
-LAUNCHER="${BIN_DIR}/gemini-desktop"
+LAUNCHER="${BIN_DIR}/mantel"
 DESKTOP="${APP_DIR}/${APP_ID}.desktop"
 
 if [[ "${1:-}" == "--uninstall" ]]; then
@@ -63,8 +63,8 @@ done
 cat > "${DESKTOP}" <<EOF
 [Desktop Entry]
 Type=Application
-Name=Gemini
-Comment=Gemini desktop client, native for Linux
+Name=Mantel
+Comment=Native desktop for AI agents on Linux
 Exec=${LAUNCHER} %U
 Icon=${DESKTOP_ICON}
 Terminal=false
@@ -77,18 +77,18 @@ command -v update-desktop-database >/dev/null && update-desktop-database "${APP_
 command -v gtk-update-icon-cache >/dev/null && gtk-update-icon-cache -f -t "${ICON_ROOT}" || true
 
 cat <<EOF
-Installed Gemini for Linux.
+Installed Mantel.
 
   launcher : ${LAUNCHER}
   entry    : ${DESKTOP}
 
-Run it:                 gemini-desktop
-Quick chat overlay:     gemini-desktop --quick
+Run it:                 mantel
+Quick chat overlay:     mantel --quick
 
 Bind quick chat to a key in your compositor, for example:
 
-  GNOME    Settings > Keyboard > Custom Shortcuts > gemini-desktop --quick
-  Hyprland bind = SUPER, SPACE, exec, gemini-desktop --quick
-  sway     bindsym \$mod+space exec gemini-desktop --quick
-  KDE      System Settings > Shortcuts > Custom > gemini-desktop --quick
+  GNOME    Settings > Keyboard > Custom Shortcuts > mantel --quick
+  Hyprland bind = SUPER, SPACE, exec, mantel --quick
+  sway     bindsym \$mod+space exec mantel --quick
+  KDE      System Settings > Shortcuts > Custom > mantel --quick
 EOF

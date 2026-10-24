@@ -20,9 +20,9 @@ from app import theme  # noqa: E402
 MAX_LINES_PX = 220
 #: Width of the composer's text field, in pixels.
 COMPOSER_MEASURE = 720
-PLACEHOLDER = "Ask Gemini…"
-PLACEHOLDER_TASK = "Describe a task for Gemini…"
-PLACEHOLDER_RESEARCH = "What should Gemini research?"
+PLACEHOLDER = "Ask Mantel…"
+PLACEHOLDER_TASK = "Describe a task…"
+PLACEHOLDER_RESEARCH = "What should Mantel research?"
 
 
 class Composer(Gtk.Box):

@@ -47,7 +47,7 @@ def output_dir() -> Path:
                 or (Path.home() / ".local" / "share"))
     import tempfile  # noqa: PLC0415
 
-    for cand in (base / "Gemini", data / "gemini-desktop" / "created",
+    for cand in (base / "Mantel", data / "gemini-desktop" / "created",
                  Path(tempfile.gettempdir()) / "gemini-created"):
         try:
             cand.mkdir(parents=True, exist_ok=True)
