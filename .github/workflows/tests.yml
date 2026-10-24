@@ -8,7 +8,8 @@ on:
 
 jobs:
   lint:
-    runs-on: ubuntu-latest
+    name: lint
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - name: Ruff
@@ -23,28 +24,29 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install GTK4 and PyGObject
+      - name: Install GTK4, PyGObject and a virtual display
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends \
             python3 python3-gi python3-gi-cairo python3-cairo \
-            gir1.2-gtk-4.0 gir1.2-adw-1 libgtk-4-1 libadwaita-1-0
+            gir1.2-gtk-4.0 gir1.2-adw-1 libgtk-4-1 libadwaita-1-0 \
+            xvfb
 
       - name: Run the tests that need no engine
         run: |
           set -e
           for t in test_schedules test_changes test_context_fallback \
                    test_memory test_todos test_focus \
-                   test_palette test_plugins test_gemini_api test_calendar test_review test_nudges test_knowledge test_plan test_resume test_schedule_threads \
-                   test_engine_adapter; do
+                   test_palette test_plugins test_gemini_api test_calendar \
+                   test_review test_nudges test_knowledge test_plan \
+                   test_resume test_schedule_threads test_engine_adapter; do
             echo "::group::$t"
-            python3 "tests/$t.py"
+            xvfb-run -a python3 "tests/$t.py"
             echo "::endgroup::"
           done
 
-  lint:
-    name: syntax and imports
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v4
-      - run: python3 -m compileall -q app tests tools
+      - name: Render the window offscreen
+        run: |
+          xvfb-run -a env GSK_RENDERER=cairo \
+            python3 -m app.main --demo --size 1744x1168 --smoke /tmp/mantel.png
+          test -s /tmp/mantel.png
