@@ -92,7 +92,7 @@ rule into the engine's permission config and replays the request.
 ## Requirements
 
 - Linux with GTK4 and libadwaita
-- Python 3.11+, PyGObject, Pycairo
+- Python 3.10+ (developed and tested on 3.14), PyGObject, Pycairo
 - The Gemini CLI engine (`agy`) on `PATH`, signed in to a Google account.
   It is **not** distributed here; install it yourself.
 
@@ -107,7 +107,8 @@ sudo dnf install python3-gobject gtk4 libadwaita python3-cairo
 ## Run it
 
 ```bash
-git clone <this repo> && cd gemini-desktop
+git clone https://github.com/<you>/gemini-desktop-linux && \
+  cd gemini-desktop-linux
 ./packaging/install.sh       # launcher, desktop entry, no root needed
 gemini-desktop
 ```
