@@ -11,7 +11,7 @@ Scenarios are selected by the prompt text:
     "hello"     streams "Hello " + "world", runs one bash tool, settles
     "slow"      streams a delta, then waits until aborted
     "fail"      rejects the prompt with success:false
-    "dialog"    asks the client to confirm, then reports the answer
+    "approve"   asks the client to approve a tool call, then reports the answer
     "crash"     exits mid-turn without settling
 
 Usage: MANTEL_PI_BIN=tests/fixtures/fake_pi.py
@@ -135,13 +135,15 @@ def _run_turn(message: str, session_id: str) -> None:
         send({"type": "agent_settled", "aborted": True})
         return
 
-    if message == "dialog":
+    if message == "approve":
         request_id = "dlg-1"
         send({"type": "extension_ui_request", "id": request_id,
-              "method": "confirm", "title": "Run deploy?",
-              "message": "This will deploy.", "timeout": 5000})
-        blocked = True
-        while blocked:
+              "method": "select", "title": "Allow bash: echo hi?",
+              "options": ["Allow once", "Allow for this session",
+                          "Always allow in this folder", "Deny"],
+              "timeout": 5000})
+        answer = None
+        while True:
             line = sys.stdin.readline()
             if not line:
                 send({"type": "agent_settled", "aborted": True})
@@ -152,8 +154,23 @@ def _run_turn(message: str, session_id: str) -> None:
                 continue
             if record.get("type") == "extension_ui_response" and \
                     record.get("id") == request_id:
-                blocked = False
-                stream("answer:" + str(record.get("confirmed")))
+                answer = record
+                break
+        decision = ("cancelled" if answer.get("cancelled")
+                    else str(answer.get("value")))
+        stream("decision:" + decision)
+        if decision in ("Allow once", "Allow for this session",
+                        "Always allow in this folder"):
+            send({"type": "tool_execution_start", "toolCallId": "call_9",
+                  "toolName": "bash", "args": {"command": "echo hi"}})
+            send({"type": "tool_execution_end", "toolCallId": "call_9",
+                  "toolName": "bash", "args": {"command": "echo hi"},
+                  "result": {"content": [{"type": "text", "text": "hi\n"}]},
+                  "isError": False, "durationMs": 5})
+        else:
+            send({"type": "turn_end",
+                  "message": {"role": "assistant", "content": []},
+                  "toolResults": []})
         send({"type": "agent_end", "messages": [], "willRetry": False})
         send({"type": "agent_settled", "aborted": False})
         return

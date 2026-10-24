@@ -34,7 +34,7 @@ def collect(turn, timeout: int = 20) -> dict:
     """Run a turn to completion, collecting everything it emits."""
     loop = GLib.MainLoop()
     seen: dict = {"deltas": [], "thoughts": [], "tools": [], "finished": None,
-                  "failed": None, "started": None}
+                  "failed": None, "started": None, "dialogs": []}
 
     turn.connect("started", lambda _t, cid: seen.update(started=cid))
     turn.connect("delta", lambda _t, text: seen["deltas"].append(text))
@@ -43,6 +43,7 @@ def collect(turn, timeout: int = 20) -> dict:
         (name, payload)))
     turn.connect("finished", lambda _t, result: (
         seen.update(finished=result), loop.quit()))
+    turn.connect("dialog", lambda _t, request: seen["dialogs"].append(request))
     turn.connect("failed", lambda _t, message: (
         seen.update(failed=message), loop.quit()))
     GLib.timeout_add_seconds(timeout, lambda: (loop.quit(), False)[1])
@@ -156,17 +157,58 @@ def test_cancel(failures: list[str]) -> None:
         failures.append(f"unhelpful cancel message: {seen['failed']!r}")
 
 
-def test_dialog_is_declined(failures: list[str]) -> None:
-    """Until M2, a blocking engine dialog must be answered, not ignored."""
+def _answer_first_dialog(turn, choice, timeout: int = 15) -> dict:
+    """Run a turn, answer its first dialog with `choice`, return what happened."""
+    state = {"seen": None, "text": []}
+
+    def on_dialog(_turn, request):
+        turn.answer_dialog(request["id"], value=choice)
+        if request["method"] == "select" and choice is None:
+            pass
+
+    def on_deny(_turn, request):
+        turn.answer_dialog(request["id"], cancelled=True)
+
+    turn.connect("dialog", on_deny if choice is None else on_dialog)
+    return collect(turn, timeout=timeout)
+
+
+def test_approval_allow(failures: list[str]) -> None:
+    """Allow once lets the tool run; the call is visible in the work panel."""
     engine = pi_engine()
-    seen = collect(engine.run("dialog"), timeout=15)
+    turn = engine.run("approve")
+    seen = _answer_first_dialog(turn, "Allow once")
     text = "".join(seen["deltas"])
-    print(f"  dialog -> deltas={seen['deltas']!r}")
-    if seen["failed"]:
-        failures.append(f"dialog turn failed: {seen['failed']}")
-        return
-    if "answer:False" not in text:
-        failures.append(f"the dialog was not declined: {text!r}")
+    print(f"  allow -> dialogs={len(seen['dialogs'])} deltas={text!r} "
+          f"tools={[n for n, _ in seen['tools']]}")
+    if not seen["dialogs"]:
+        failures.append("no dialog reached the client")
+    else:
+        request = seen["dialogs"][0]
+        if request.get("method") != "select":
+            failures.append(f"dialog method was {request.get('method')!r}")
+        options = request.get("options") or []
+        if options[:2] != ["Allow once", "Allow for this session"]:
+            failures.append(f"ladder not forwarded: {options}")
+    if "decision:Allow once" not in text:
+        failures.append(f"engine did not receive the answer: {text!r}")
+    if not any(name == "bash" for name, _ in seen["tools"]):
+        failures.append("an allowed tool should still run")
+    if (seen["finished"] or {}).get("status") != "SUCCESS":
+        failures.append("an allowed turn should settle successfully")
+
+
+def test_approval_deny(failures: list[str]) -> None:
+    """Deny blocks the call: the engine must never execute it."""
+    engine = pi_engine()
+    turn = engine.run("approve")
+    seen = _answer_first_dialog(turn, None)
+    text = "".join(seen["deltas"])
+    print(f"  deny -> deltas={text!r} tools={[n for n, _ in seen['tools']]}")
+    if "decision:cancelled" not in text:
+        failures.append(f"engine did not see a refusal: {text!r}")
+    if seen["tools"]:
+        failures.append(f"a denied tool ran anyway: {seen['tools']}")
 
 
 def test_facade(failures: list[str]) -> None:
@@ -200,6 +242,38 @@ def test_missing_engine(failures: list[str]) -> None:
         failures.append(f"unexpected model fallback: {engine.models()}")
 
 
+def test_shipped_extension_loads(failures: list[str]) -> None:
+    """The approval gate is TypeScript; Pi transpiles it on load.
+
+    This does not need credentials: loading the extension and answering a
+    state request proves the file parses and registers.
+    """
+    import subprocess  # noqa: PLC0415
+
+    extension = ROOT / "pi-extensions" / "approvals.ts"
+    binary = os.environ.get("MANTEL_PI_BIN") or str(
+        ROOT / ".pi-test" / "node_modules" / ".bin" / "pi")
+    if not (Path(binary).is_file() and extension.is_file()):
+        print("  skip: no pi binary or extension")
+        return
+    argv = [binary, "--mode", "rpc", "--no-session", "--extension", str(extension)]
+    try:
+        proc = subprocess.run(argv, input='{"id":"1","type":"get_state"}\n',
+                              capture_output=True, text=True, timeout=90)
+    except (OSError, subprocess.SubprocessError) as exc:
+        failures.append(f"could not run pi with the extension: {exc}")
+        return
+    out = proc.stdout
+    errors = [line for line in proc.stderr.splitlines()
+              if "extension" in line.lower() and "error" in line.lower()]
+    print(f"  loaded with exit {proc.returncode}; "
+          f"responses={out.count('\"type\":\"response\"')}")
+    if '"command":"get_state"' not in out.replace(" ", ""):
+        failures.append("pi did not answer get_state with the extension loaded")
+    if errors:
+        failures.append(f"extension reported errors: {errors[:2]}")
+
+
 def main() -> int:
     if not FAKE_PI.is_file():
         print(f"  missing fixture: {FAKE_PI}")
@@ -209,7 +283,9 @@ def main() -> int:
     failures: list[str] = []
     for test in (test_models, test_streaming_turn, test_chat_mode_is_read_only,
                  test_rejected_prompt, test_crash, test_cancel,
-                 test_dialog_is_declined, test_facade, test_missing_engine):
+                 test_approval_allow, test_approval_deny,
+                 test_facade, test_missing_engine,
+                 test_shipped_extension_loads):
         print(f"\n  {test.__name__}")
         test(failures)
 
