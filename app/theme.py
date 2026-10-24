@@ -372,6 +372,24 @@ label.md-h3 {{ font-size: 16px; font-weight: 600; }}
   border-color: rgba(140, 47, 47, 0.35);
 }}
 .approval-note {{ font-size: 11.5px; color: @g-text_dim; }}
+.task-tick {{
+  background-image: none;
+  background: transparent;
+  border: 1.5px solid rgba(0, 0, 0, 0.28);
+  border-radius: 999px;
+  min-width: 18px;
+  min-height: 18px;
+  padding: 0;
+}}
+.task-tick:hover {{ background: rgba(0, 0, 0, 0.06); }}
+.task-overdue {{ color: #8C2F2F; }}
+.task-entry {{
+  background-image: none;
+  background: @g-field;
+  border-radius: 12px;
+  padding: 10px 14px;
+  font-size: 14px;
+}}
 .msg-steer {{
   background-image: none;
   background: @g-surface_alt;

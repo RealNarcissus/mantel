@@ -185,7 +185,12 @@ class Window(Adw.ApplicationWindow):
         root.append(content)
         self.set_content(root)
 
+        from app.reminders import ReminderRunner  # noqa: PLC0415
         from app.scheduler import Scheduler  # noqa: PLC0415
+
+        self.reminders = ReminderRunner()
+        self.reminders.connect("due", self._on_reminder)
+        self.reminders.start()
 
         self.scheduler = Scheduler(engine)
         self.scheduler.connect("ran", self._on_schedule_ran)
@@ -250,7 +255,7 @@ class Window(Adw.ApplicationWindow):
             self.create = None
         try:
             from app.pages.tasks import TasksPage  # noqa: PLC0415
-            self.tasks = TasksPage(on_new=self.new_chat, on_open=self.open_chat)
+            self.tasks = TasksPage(on_changed=self._refresh_tasks)
             self._pages.add_named(self._own_scroller(self.tasks), "tasks")
         except Exception:  # noqa: BLE001
             self.tasks = None
@@ -369,6 +374,11 @@ class Window(Adw.ApplicationWindow):
             not self._sidebar_revealer.get_reveal_child())
 
     # -- account ------------------------------------------------------------
+    def _refresh_tasks(self) -> None:
+        page = getattr(self, "tasks", None)
+        if page is not None:
+            page.refresh()
+
     def _refresh_memory(self) -> None:
         page = getattr(self, "memory", None)
         if page is not None:
@@ -479,6 +489,23 @@ I also added a regression test for the missing check.
         message = self.chat.begin_assistant(model="Gemini 3.8 Flash (High)")
         message.set_text(self.DEMO_TRANSCRIPT)
         message.finish(duration=12.4, usage={"total_tokens": 2185})
+
+        try:
+            from app import todos as todos_mod  # noqa: PLC0415
+
+            for title in ("Pay the invoice today",
+                          "Review the Pi adapter notes tomorrow",
+                          "Draft the weekly note on Monday",
+                          "Someday: read the durable harness docs"):
+                todos_mod.add(title)
+            done = todos_mod.add("Send the status update", due=0)
+            if done is not None:
+                todos_mod.complete(done.id)
+            page = getattr(self, "tasks", None)
+            if page is not None:
+                page.refresh()
+        except Exception:  # noqa: BLE001
+            pass
 
         try:
             from app import memory as memory_mod  # noqa: PLC0415
@@ -791,6 +818,23 @@ I also added a regression test for the missing check.
         # Learn only what was stated plainly; the page shows exactly what was
         # kept, and the user can delete it.
         try:
+            from app import todos as todos_mod  # noqa: PLC0415
+
+            for title in ("Pay the invoice today",
+                          "Review the Pi adapter notes tomorrow",
+                          "Draft the weekly note on Monday",
+                          "Someday: read the durable harness docs"):
+                todos_mod.add(title)
+            done = todos_mod.add("Send the status update", due=0)
+            if done is not None:
+                todos_mod.complete(done.id)
+            page = getattr(self, "tasks", None)
+            if page is not None:
+                page.refresh()
+        except Exception:  # noqa: BLE001
+            pass
+
+        try:
             from app import memory as memory_mod  # noqa: PLC0415
 
             if memory_mod.capture(text):
@@ -1007,6 +1051,18 @@ I also added a regression test for the missing check.
         if self.turn is not None:
             self.turn.cancel()
 
+    # -- reminders ----------------------------------------------------------
+    def _on_reminder(self, _runner, task) -> None:
+        """A task's time arrived. Notify, and show it on the page."""
+        due = ""
+        if getattr(task, "due", 0):
+            import time as _time  # noqa: PLC0415
+
+            due = _time.strftime("%H:%M", _time.localtime(task.due))
+        body = task.title + (" · " + due if due else "")
+        self._notify("Reminder", body)
+        self._refresh_tasks()
+
     # -- schedules ----------------------------------------------------------
     def _run_schedule(self, schedule) -> None:
         """Run one schedule immediately."""
@@ -1127,7 +1183,7 @@ I also added a regression test for the missing check.
         self.sidebar.set_conversations(convs, self._status_for)
         tasks = getattr(self, "tasks", None)
         if tasks is not None:
-            tasks.refresh(convs, self._status_for)
+            tasks.refresh()
         self._refresh_home()
 
     def _status_for(self, conv) -> str:
@@ -1304,6 +1360,9 @@ I also added a regression test for the missing check.
         scheduler = getattr(self, "scheduler", None)
         if scheduler is not None:
             scheduler.stop()
+        reminders = getattr(self, "reminders", None)
+        if reminders is not None:
+            reminders.stop()
         return False
 
     def _show_options(self) -> None:

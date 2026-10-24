@@ -41,6 +41,10 @@ a native Linux surface — without owning the intelligence itself.
 - **Steering**: type while a turn is running and the instruction joins it —
   delivered after the current tool calls, shown as a note rather than a second
   user turn.
+- **Tasks and reminders**: a local list you write the way you say it — “pay
+  the invoice tomorrow at 5pm” becomes a dated task — with projects, repeats,
+  an overdue state and time-based notifications while the app is open. The
+  agent writes to the same store.
 - **Memory you can inspect**: facts and preferences the agent knows about you,
   gathered from what you state plainly or added by hand, injected into each
   turn under a token budget — and listed with their source, age and expiry so

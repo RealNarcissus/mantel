@@ -24,7 +24,7 @@ jobs:
         run: |
           set -e
           for t in test_schedules test_changes test_context_fallback \
-                   test_extras test_signin test_memory test_engine_adapter; do
+                   test_extras test_signin test_memory test_todos test_engine_adapter; do
             echo "::group::$t"
             python3 "tests/$t.py"
             echo "::endgroup::"

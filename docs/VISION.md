@@ -125,6 +125,11 @@ is the chassis. Here is what hangs on it.
 
 ### P0 — the minimum that is genuinely useful daily
 
+> **Shipped so far:** the task store with natural-language dates, repeats,
+> projects and reminders (`app/todos.py`), the Tasks page, the reminder runner,
+> and Memory v1. Today's merged agenda, capture-from-anywhere and the command
+> palette are still to come.
+
 | # | Feature | Why it earns the open | Acceptance |
 |---|---|---|---|
 | 1 | **Today** with merged agenda and "three things" | answers "what now?" in one glance | renders in <150 ms; three things editable inline |
