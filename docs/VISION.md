@@ -174,6 +174,13 @@ feature increases maintenance, it is out.
 
 ## 7. Memory: the part that makes it *yours*
 
+> **v1 shipped.** `app/memory.py` and the Memory page implement the local
+> store below: typed facts with source, reinforcement, expiry and
+> supersession; a budgeted profile block injected into every turn; capture
+> from plainly-stated preferences, projects and commitments; and
+> forget/clear from the page. The provider interface and Supermemory backend
+> are still to come.
+
 The user's ask is explicit: the agent should know them. The design constraint is
 equally explicit: they must be able to check.
 

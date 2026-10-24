@@ -33,6 +33,7 @@ PAGES = (
     ("tasks", "Tasks", "checklist", engine_mod.TOOLS),
     ("create", "Create", "add_image_spark", engine_mod.IMAGES),
     ("schedule", "Schedule", "schedule", engine_mod.TOOLS),
+    ("memory", "Memory", "lightbulb", engine_mod.TOOLS),
     ("connectors", "Connectors", "extension", engine_mod.CONNECTORS),
     ("skills", "Skills", "notes_spark", engine_mod.SKILLS),
 )
@@ -65,6 +66,12 @@ class Window(Adw.ApplicationWindow):
             # expose a real account, folder or permission file
             self.workspace = "/home/alex/projects"
             os.environ.setdefault("GEMINI_HOME_DIR", "/home/alex/.gemini")
+            # demo data must never touch the real store, schedules or memory
+            import tempfile as _tempfile  # noqa: PLC0415
+
+            os.environ.setdefault(
+                "XDG_DATA_HOME",
+                _tempfile.mkdtemp(prefix="mantel-demo-data-"))
         self.conversation = None
         self.turn = None
         self.session = session_mod.Session(engine)
@@ -228,6 +235,14 @@ class Window(Adw.ApplicationWindow):
             except Exception:  # noqa: BLE001
                 self.skills = None
         try:
+            from app.pages.memory import MemoryPage  # noqa: PLC0415
+            self.memory = MemoryPage(
+                on_changed=self._refresh_memory,
+                on_add=lambda _text: self._refresh_memory())
+            self._pages.add_named(self._own_scroller(self.memory), "memory")
+        except Exception:  # noqa: BLE001
+            self.memory = None
+        try:
             from app.pages.create import CreatePage  # noqa: PLC0415
             self.create = CreatePage(on_generate=self._generate_image)
             self._pages.add_named(self._own_scroller(self.create), "create")
@@ -354,6 +369,11 @@ class Window(Adw.ApplicationWindow):
             not self._sidebar_revealer.get_reveal_child())
 
     # -- account ------------------------------------------------------------
+    def _refresh_memory(self) -> None:
+        page = getattr(self, "memory", None)
+        if page is not None:
+            page.refresh()
+
     def _refresh_settings(self) -> None:
         """Rebuild the Settings page after a change made on it."""
         page = getattr(self, "settings", None)
@@ -459,6 +479,22 @@ I also added a regression test for the missing check.
         message = self.chat.begin_assistant(model="Gemini 3.8 Flash (High)")
         message.set_text(self.DEMO_TRANSCRIPT)
         message.finish(duration=12.4, usage={"total_tokens": 2185})
+
+        try:
+            from app import memory as memory_mod  # noqa: PLC0415
+
+            for text, kind in (
+                ("Prefers deep work before noon", "preference"),
+                ("Works on Mantel, a native Linux client", "project"),
+                ("Uses Neovim and a monospace everything", "preference"),
+                ("Said they would review the PR by Friday", "commitment"),
+            ):
+                memory_mod.remember(text, kind=kind, source="you")
+            page = getattr(self, "memory", None)
+            if page is not None:
+                page.refresh()
+        except Exception:  # noqa: BLE001
+            pass
 
         self.session.record_tool("read_file", {"Path": "src/server.py"},
                                  "DONE", output="142 lines")
@@ -752,6 +788,15 @@ I also added a regression test for the missing check.
         history = self._history_prefix(conv) if lost_context else ""
         conv.add("user", text)
         self.store.save(conv)
+        # Learn only what was stated plainly; the page shows exactly what was
+        # kept, and the user can delete it.
+        try:
+            from app import memory as memory_mod  # noqa: PLC0415
+
+            if memory_mod.capture(text):
+                self._refresh_memory()
+        except Exception:  # noqa: BLE001 - memory must never block a turn
+            pass
         self.composer.clear()
         self.chat.add_user(text)
 

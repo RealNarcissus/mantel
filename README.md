@@ -41,6 +41,11 @@ a native Linux surface — without owning the intelligence itself.
 - **Steering**: type while a turn is running and the instruction joins it —
   delivered after the current tool calls, shown as a note rather than a second
   user turn.
+- **Memory you can inspect**: facts and preferences the agent knows about you,
+  gathered from what you state plainly or added by hand, injected into each
+  turn under a token budget — and listed with their source, age and expiry so
+  you can forget any of them. Local to the machine; contradictions supersede
+  rather than pile up.
 - Three modes — **Chat**, **Task** and **Research** — with model and reasoning
   effort per conversation.
 
@@ -60,7 +65,7 @@ a native Linux surface — without owning the intelligence itself.
 |---|---|
 | ![Task mode](docs/screenshots/chat.png) | ![Tasks](docs/screenshots/tasks.png) |
 | ![Create](docs/screenshots/create.png) | ![Scheduled](docs/screenshots/schedule.png) |
-| ![Connectors](docs/screenshots/connectors.png) | ![Settings](docs/screenshots/settings.png) |
+| ![Memory](docs/screenshots/memory.png) | ![Settings](docs/screenshots/settings.png) |
 
 Every image is an offscreen render of the real widget tree, produced by
 `tools/make_screenshots.py`. They use demo data, so no real account or path

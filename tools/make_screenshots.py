@@ -38,8 +38,8 @@ from tests.harness import render_to_png  # noqa: E402
 WIDTH, HEIGHT = 1744, 1168
 
 #: Pages to capture, in the order they should appear in the docs.
-PAGES = ("home", "chat", "tasks", "create", "schedule", "connectors",
-         "skills", "settings")
+PAGES = ("home", "chat", "tasks", "create", "schedule", "memory",
+         "connectors", "skills", "settings")
 
 
 def _make_window(application, *, page: str, scheme: str = "light"):

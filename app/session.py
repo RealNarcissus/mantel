@@ -27,6 +27,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from app import engine as engine_mod
+from app import memory as memory_mod
 from app import permissions
 
 
@@ -246,11 +247,26 @@ class Session:
         """The engine's own `--mode` value (chat vs task)."""
         return "auto" if self.mode != MODE_CHAT else ""
 
+    #: Facts about the user are prepended to every turn, budgeted.
+    use_memory = True
+
     def brief(self, prompt: str) -> str:
-        """The prompt the agent actually receives."""
+        """The prompt the agent actually receives.
+
+        Memory comes first: a short block of what the agent already knows, so
+        the user does not have to re-explain themselves each session. It is
+        budgeted (see `memory.PROFILE_BUDGET`) and scoped, never a data dump.
+        """
+        prefix = ""
+        if self.use_memory:
+            prefix = memory_mod.profile_block(scope=self.memory_scope())
         if self.mode == MODE_RESEARCH:
-            return RESEARCH_BRIEF + prompt
-        return prompt
+            return prefix + RESEARCH_BRIEF + prompt
+        return prefix + prompt
+
+    def memory_scope(self) -> str:
+        """Which memory scope this turn is allowed to see."""
+        return "all"
 
     # -- activity -----------------------------------------------------------
     def record_tool(self, name: str, parameters: dict, state: str,

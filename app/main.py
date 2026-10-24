@@ -140,7 +140,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--page", default="home",
                     choices=("home", "chat", "tasks", "schedule",
                              "connectors", "skills", "account",
-                             "settings", "create"),
+                             "settings", "create", "memory"),
                     help="which page to open on start")
     ap.add_argument("--scheme", default="light",
                     choices=("light", "dark", "system"),
