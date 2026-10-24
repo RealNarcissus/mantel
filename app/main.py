@@ -49,6 +49,7 @@ def _parse_size(text: str) -> tuple[int, int]:
 class Application(Adw.Application):
     def __init__(self, workspace: str = "", smoke: str = "", demo: bool = False,
                  smoke_prompt: str = "", quick: bool = False, page: str = "home",
+                 palette: bool = False,
                  scheme: str = "light", size: tuple[int, int] = (1440, 940)):
         super().__init__(application_id=APP_ID, flags=0)
         self.workspace = workspace
@@ -56,6 +57,7 @@ class Application(Adw.Application):
         self.demo = demo
         self.smoke_prompt = smoke_prompt
         self.quick = quick
+        self.open_palette = palette
         self.page = page
         self.scheme = scheme
         self.size = size
@@ -81,6 +83,9 @@ class Application(Adw.Application):
         window.present()
         if self.demo:
             window.load_demo()
+        if self.open_palette:
+            GLib.timeout_add(300, lambda: (window.open_palette(), False)[1])
+
         if self.smoke and self.smoke_prompt:
             window.composer.view.get_buffer().set_text(self.smoke_prompt)
             window.composer.view.set_opacity(1.0)
@@ -124,6 +129,53 @@ class Application(Adw.Application):
         return False
 
 
+def _capture(text: str) -> int:
+    """Run one capture without starting the GUI.
+
+    This is the "from anywhere" half of capture: bind it to a compositor
+    shortcut and it is a one-line inbox from any window. It reports what it
+    did, because silence after a hotkey is indistinguishable from failure.
+    """
+    from app import memory as memory_mod  # noqa: PLC0415
+    from app import palette  # noqa: PLC0415
+    from app import todos  # noqa: PLC0415
+
+    actions = palette.interpret(text)
+    if not actions:
+        print("nothing to capture")
+        return 2
+    action = actions[0]
+
+    if action.kind == "task":
+        task = todos.add(action.payload or text)
+        if task is None:
+            print("could not add the task")
+            return 1
+        print(f"task added: {task.title}"
+              + (f" · {action.detail}" if action.detail else ""))
+        return 0
+
+    if action.kind == "remind":
+        task = todos.add(action.payload or text, remind=True)
+        if task is None:
+            print("could not add the reminder")
+            return 1
+        print(f"reminder set: {task.title}"
+              + (f" · {action.detail}" if action.detail else ""))
+        return 0
+
+    if action.kind == "note":
+        fact = memory_mod.remember(action.payload or text, source="capture")
+        if fact is None:
+            print("could not remember that")
+            return 1
+        print(f"remembered: {fact.text}")
+        return 0
+
+    print(f"{action.kind}: {action.label}")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="gemini-desktop", description=__doc__)
     ap.add_argument("--workspace", "-w", default="",
@@ -147,13 +199,22 @@ def main(argv: list[str] | None = None) -> int:
                     help="colour scheme")
     ap.add_argument("--size", default="1440x940",
                     help="window size, e.g. 1744x1168")
+    ap.add_argument("--capture", default="",
+                    help="capture a task, note or reminder without opening a "
+                         "window, then exit (for a global hotkey or a script)")
+    ap.add_argument("--palette", action="store_true",
+                    help="open with the command palette focused")
     args = ap.parse_args(argv)
 
     if args.version:
         print("mantel 1.0")
         return 0
 
+    if args.capture:
+        return _capture(args.capture)
+
     app = Application(workspace=args.workspace, smoke=args.smoke, demo=args.demo,
+                      palette=args.palette,
                       smoke_prompt=args.smoke_prompt, quick=args.quick,
                       page=args.page, scheme=args.scheme,
                       size=_parse_size(args.size))
