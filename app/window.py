@@ -820,8 +820,15 @@ I also added a regression test for the missing check.
         self._approvals.ask(request or {}, answer)
 
     def _on_started(self, _turn, engine_id: str) -> None:
+        """Persist the engine's session id the moment it exists.
+
+        Waiting until the turn finishes means a crash during the first turn
+        loses the only pointer to the engine's session — and with it the
+        ability to resume instead of replaying history by hand.
+        """
         if self.conversation and engine_id:
             self.conversation.engine_id = engine_id
+            self.store.save(self.conversation)
 
     def _on_tool(self, _turn, name: str, payload: str) -> None:
         """Record a tool call from the engine's stream."""
