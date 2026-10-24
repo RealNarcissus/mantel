@@ -1,6 +1,6 @@
 # Plan: Pi as the first engine
 
-**Status:** M0 and M1 complete; M2 (approval cards) is next
+**Status:** M0–M2 complete; M3 (capability gating + tool parity) is next
 **Goal:** replace the legacy vendor engine with **Pi** (`pi --mode rpc`) as the
 default engine, without changing the shell, and then adopt **Pi Durable** for
 conversations and tasks.
@@ -132,10 +132,21 @@ all nine contract checks, and against the real `pi` 1.4.0 for handshake and
 session id; a real prompt currently stops at "No API key found for the selected
 model", which is the expected blocker until a provider is connected.
 
-**M2 — approvals (3–4 days)**
-The extension above plus client rendering, timeout, and workspace rules.
-*Done when:* the four acceptance criteria in §4 pass as tests, including the
-"never executed" assertion.
+**M2 — approvals (done)**
+`pi-extensions/approvals.ts` gates `tool_call` and asks through `ctx.ui.select`;
+the client renders the request as its own approval card and answers through
+`extension_ui_response`. Grants are per-call, per-session and per-folder (the
+last persisted under `~/.config/mantel/approvals.json`). Failure is closed: no
+UI, no answer, a timeout, a read error or an unexpected value all deny. Escape
+denies the visible card before it stops the turn.
+
+*Acceptance, as tests:*
+- the four-step ladder reaches the client, and "Allow once" lets the call run
+- a deny means the tool never executes (asserted on the event stream, not the
+  transcript)
+- an unanswered dialog is declined by the adapter's own timer
+- the shipped TypeScript gate loads in real `pi` (exit 0, `get_state` answered)
+- the gate is fail-closed outside RPC mode (`ctx.hasUI` false → block)
 
 **M3 — tool surface parity (2 days)**
 Tool events drive the work panel; get_state drives the status pill; screenshots

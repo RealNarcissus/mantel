@@ -72,7 +72,7 @@ stores are engine-independent.
 
 | Engine | Status | Notes |
 |---|---|---|
-| **Pi** ([pi.dev](https://pi.dev)) | **M1 complete — default target** | `pi --mode rpc`: streaming, tool events, models, effort, abort, sessions. Verified against `pi` 1.4.0 and a protocol fake. Approvals (extension UI requests) land in M2; durability in M4. |
+| **Pi** ([pi.dev](https://pi.dev)) | **M2 complete — default target** | `pi --mode rpc`: streaming, tool events, models, effort, abort, sessions, and **pre-execution approvals** through the shipped gate extension (`pi-extensions/approvals.ts`). Verified against `pi` 1.4.0 and a protocol fake. Durability lands in M4. |
 | **Gemini API** ([`google-genai`](https://pypi.org/project/google-genai/)) | planned | Direct SDK integration for people who want Gemini models with their own API key, including the Live API for voice. |
 | **Legacy vendor engine** | v0.1 only, being removed | The current working bridge drives a bundled CLI engine. It is why this repo exists and is documented in [docs/reverse-engineering/](docs/reverse-engineering/), but it depends on vendor-issued credentials and is not the future. |
 
@@ -149,8 +149,9 @@ recovering a protocol from a shipped binary is a useful thing to be able to do.
 
 Three findings from that study shaped this client:
 
-1. **The engine reports refusals rather than failing silently.** That is what
-   makes a visible approval ladder possible instead of a wall of denials.
+1. **An engine that can ask mid-turn makes approvals real.** Pi's extension UI
+   protocol lets the gate stop a tool before it runs, so "Deny" means the call
+   never happened — not that it failed and was reported afterwards.
 2. **Permissions live in a config file the client can own.** So a grant is a
    rule the engine honours, not a flag the UI pretends to keep.
 3. **The stream is one-directional and accepts a single input event.** So
