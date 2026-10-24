@@ -50,9 +50,34 @@ class Conversation:
     updated: float = field(default_factory=time.time)
     engine_id: str = ""          # the engine's conversation id, for resume
     context_lost: bool = False   # the engine could not resume; resend history
+    pending_prompt: str = ""     # a turn that was running when the app stopped
+    pending_since: float = 0.0
+    interrupted: bool = False    # that turn never finished; offer a retry
     cwd: str = ""
     model: str = ""
     messages: list[Message] = field(default_factory=list)
+
+    def begin_turn(self, prompt: str) -> None:
+        """Remember what is about to run, so a crash can offer a retry."""
+        self.pending_prompt = prompt
+        self.pending_since = time.time()
+        self.interrupted = False
+        self._dirty = True
+
+    def end_turn(self) -> None:
+        self.pending_prompt = ""
+        self.pending_since = 0.0
+        self.interrupted = False
+        self._dirty = True
+
+    def recover(self) -> bool:
+        """Called on load: a pending turn means the app died mid-turn."""
+        if self.pending_prompt:
+            self.interrupted = True
+            self.pending_prompt = ""
+            self._dirty = True
+            return True
+        return False
 
     def add(self, role: str, text: str = "", **kw) -> Message:
         msg = Message(role=role, text=text, **kw)
@@ -97,6 +122,9 @@ class Store:
             updated=raw.get("updated", 0.0),
             engine_id=raw.get("engine_id", ""),
             context_lost=bool(raw.get("context_lost", False)),
+            pending_prompt=str(raw.get("pending_prompt") or ""),
+            pending_since=float(raw.get("pending_since") or 0.0),
+            interrupted=bool(raw.get("interrupted", False)),
             cwd=raw.get("cwd", ""),
             model=raw.get("model", ""),
         )

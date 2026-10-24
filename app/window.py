@@ -221,6 +221,7 @@ class Window(Adw.ApplicationWindow):
         self.scheduler.start()
 
         self._install_actions()
+        self._recover_interrupted()
         self._set_theme(scheme)
         self.conversation = self.store.new(cwd=self.workspace)
         self.chat.show_welcome(self._use_suggestion)
@@ -1055,112 +1056,10 @@ END:VCALENDAR
         lost_context = not conv.engine_id or conv.context_lost
         history = self._history_prefix(conv) if lost_context else ""
         conv.add("user", text)
+        conv.begin_turn(text)
         self.store.save(conv)
         # Learn only what was stated plainly; the page shows exactly what was
         # kept, and the user can delete it.
-        try:
-            from pathlib import Path as _P  # noqa: PLC0415
-
-            from app import plugins as plugins_mod  # noqa: PLC0415
-
-            reference = (_P(__file__).resolve().parent.parent
-                         / "plugins" / "day-summary")
-            if reference.is_dir():
-                plugins_mod.install(reference)
-            page = getattr(self, "plugins_page", None)
-            if page is not None:
-                page.refresh()
-        except Exception:  # noqa: BLE001
-            pass
-
-        try:
-            from app import knowledge as knowledge_mod  # noqa: PLC0415
-
-            notes = _Path(_tempfile.mkdtemp(prefix="mantel-demo-notes-"))
-            (notes / "week.md").write_text(
-                "# Week plan\n\nDeep work before noon. Meetings after lunch. "
-                "Release on Thursday if CI is green.\n")
-            (notes / "design.md").write_text(
-                "# Design notes\n\nThe rail is the only chrome. Content gets "
-                "the width. Numbers are monospace on purpose.\n")
-            knowledge_mod.add_source(str(notes))
-            self._refresh_settings()
-        except Exception:  # noqa: BLE001
-            pass
-
-        try:
-            from app import review as review_mod  # noqa: PLC0415
-
-            for minutes in (25, 25, 50, 25):
-                review_mod.record_focus(minutes,
-                                        finished=_time.time() - 3600)
-            page = getattr(self, "review_page", None)
-            if page is not None:
-                page.refresh()
-        except Exception:  # noqa: BLE001
-            pass
-
-        try:
-            import datetime as _dt  # noqa: PLC0415
-
-            from app import calendar as calendar_mod  # noqa: PLC0415
-
-            today = _dt.date.today()
-            def stamp(hour: int) -> str:
-                return _dt.datetime.combine(
-                    today, _dt.time(hour=hour)).strftime("%Y%m%dT%H%M%S")
-
-            ics = f"""BEGIN:VCALENDAR
-VERSION:2.0
-BEGIN:VEVENT
-UID:design-review@demo
-SUMMARY:Design review
-DTSTART:{stamp(11)}
-DTEND:{stamp(12)}
-LOCATION:Room 2
-END:VEVENT
-BEGIN:VEVENT
-UID:focus-hour@demo
-SUMMARY:Focus hour
-DTSTART:{stamp(15)}
-DTEND:{stamp(16)}
-END:VEVENT
-BEGIN:VEVENT
-UID:release@demo
-SUMMARY:Release day
-DTSTART;VALUE=DATE:{today.strftime('%Y%m%d')}
-END:VEVENT
-END:VCALENDAR
-"""
-            demo_ics = _Path(_tempfile.mkdtemp(prefix="mantel-demo-ics-")) / "day.ics"
-            demo_ics.write_text(ics)
-            calendar_mod.add_source(str(demo_ics))
-            page = getattr(self, "today_page", None)
-            if page is not None:
-                page.refresh()
-        except Exception:  # noqa: BLE001
-            pass
-
-        try:
-            from app import todos as todos_mod  # noqa: PLC0415
-
-            for title in ("Pay the invoice today",
-                          "Review the Pi adapter notes tomorrow",
-                          "Draft the weekly note on Monday",
-                          "Someday: read the durable harness docs"):
-                todos_mod.add(title)
-            for finished in ("Send the status update",
-                             "Fix the crash on startup",
-                             "Reply to the design thread"):
-                task = todos_mod.add(finished, due=0)
-                if task is not None:
-                    todos_mod.complete(task.id)
-            page = getattr(self, "tasks", None)
-            if page is not None:
-                page.refresh()
-        except Exception:  # noqa: BLE001
-            pass
-
         try:
             from app import memory as memory_mod  # noqa: PLC0415
 
@@ -1316,6 +1215,8 @@ END:VCALENDAR
             self._approvals.show(approvals, self.session.grantable(approvals[0]))
             self.session.error = error
 
+        if self.conversation:
+            self.conversation.end_turn()
         if status and status != "SUCCESS":
             msg.fail(error or f"engine returned {status}")
             self.conversation.add("assistant", error or status,
@@ -1358,6 +1259,7 @@ END:VCALENDAR
         self.session.running = False
         self.session.error = message
         msg.fail(message)
+        self.conversation.end_turn()
         self.conversation.add("assistant", message, error=message)
         self.store.save(self.conversation)
         self._update_work()
@@ -1567,10 +1469,40 @@ END:VCALENDAR
                 m = self.chat.add_assistant_text(msg.text, model=msg.model)
                 if msg.thinking:
                     m.append_thought(msg.thinking)
+        if conv.interrupted:
+            self.chat.add_interrupted(
+                on_continue=lambda: self._continue_interrupted(conv),
+                on_dismiss=lambda: self._dismiss_interrupted(conv))
         self.composer.set_model(self._current_model_label())
         self._go("chat")
         self._refresh_sidebar()
         self._restore_from_engine(conv)
+
+    # -- interrupted turns -------------------------------------------------
+    def _recover_interrupted(self) -> None:
+        """Mark conversations whose turn was running when the app stopped."""
+        marked = 0
+        for conv in self.store.list():
+            if conv.recover():
+                self.store.save(conv)
+                marked += 1
+        if marked:
+            self._refresh_sidebar()
+
+    def _continue_interrupted(self, conv) -> None:
+        """Ask the agent to pick the interrupted work back up."""
+        conv.end_turn()
+        self.store.save(conv)
+        self.conversation = conv
+        self.open_chat(conv.id)
+        self.submit("The previous turn was interrupted before it finished. "
+                    "Continue from where you left off, and say what you "
+                    "completed.")
+
+    def _dismiss_interrupted(self, conv) -> None:
+        conv.end_turn()
+        self.store.save(conv)
+        self.open_chat(conv.id)
 
     def _restore_from_engine(self, conv) -> None:
         """Fill in turns the engine has but our store does not.

@@ -321,6 +321,32 @@ class ChatView(Gtk.ScrolledWindow):
         self._column.append(row)
         self._scroll_bottom()
 
+    def add_interrupted(self, on_continue, on_dismiss) -> None:
+        """A turn that never finished, with the choice to continue or ignore."""
+        panel = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+        panel.add_css_class("interrupted")
+        panel.set_margin_top(6)
+        panel.set_margin_bottom(6)
+        label = Gtk.Label(
+            label="The previous turn was interrupted — the app stopped before "
+                  "it finished.", xalign=0)
+        label.set_wrap(True)
+        label.add_css_class("metric-sub")
+        label.set_hexpand(True)
+        panel.append(label)
+
+        resume = Gtk.Button(label="Continue")
+        resume.add_css_class("chip-grade")
+        resume.connect("clicked", lambda _b: on_continue())
+        panel.append(resume)
+
+        dismiss = Gtk.Button(label="Dismiss")
+        dismiss.add_css_class("chip-grade")
+        dismiss.connect("clicked", lambda _b: on_dismiss())
+        panel.append(dismiss)
+        self._column.append(panel)
+        self._scroll_bottom()
+
     def add_error(self, message: str) -> None:
         lbl = Gtk.Label(label=message, xalign=0)
         lbl.add_css_class("error-box")

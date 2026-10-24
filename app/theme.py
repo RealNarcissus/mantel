@@ -406,6 +406,12 @@ label.md-h3 {{ font-size: 16px; font-weight: 600; }}
   padding: 10px 14px;
   font-size: 14px;
 }}
+.interrupted {{
+  background: rgba(214, 168, 62, 0.10);
+  border: 1px solid rgba(214, 168, 62, 0.35);
+  border-radius: 12px;
+  padding: 8px 12px;
+}}
 .msg-steer {{
   background-image: none;
   background: @g-surface_alt;
