@@ -129,7 +129,7 @@ stores are engine-independent.
 | Engine | Status | Notes |
 |---|---|---|
 | **Pi** ([pi.dev](https://pi.dev)) | **M3 complete — default target** | `pi --mode rpc`: streaming, tool events, models, effort, abort, sessions, and **pre-execution approvals** through the shipped gate extension (`pi-extensions/approvals.ts`). Verified against `pi` 1.4.0 and a protocol fake. Durability lands in M4. |
-| **Gemini API** | **implemented (chat, streaming)** — set `GEMINI_API_KEY` | Speaks the public REST streaming API directly, with no third-party Python dependency. Verified against a local fake API: streaming, usage, model listing and error mapping. Tool calling is the next step; the capability system hides agent-only surfaces until it lands. |
+| **Gemini API** | **implemented (chat, streaming, tools, approvals)** — set `GEMINI_API_KEY` | Speaks the public REST streaming API directly, with no third-party Python dependency. A real tool loop: `read_file` runs freely; `write_file` and `run_command` ask through the same approval cards every other engine uses, and a deny means the tool never runs. Verified against a local fake API — no key needed in CI. |
 | **Legacy vendor engine** | v0.1 only, being removed | The current working bridge drives a bundled CLI engine. It is why this repo exists and is documented in [docs/reverse-engineering/](docs/reverse-engineering/), but it depends on vendor-issued credentials and is not the future. |
 
 Swapping engines changes what the app *offers*, not how it feels: the same

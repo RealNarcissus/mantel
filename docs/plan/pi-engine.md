@@ -211,9 +211,16 @@ Evaluate Pi Durable's background tasks for scheduled prompts (including the
   the shell keeps the conversation and hides agent-only surfaces — the
   capability system doing exactly what it was built for. Verified against a
   local fake API, so no key or network is needed in CI.
-- *Remaining:* function calling and approvals for this engine, then deleting
-  the legacy adapter and its OAuth module. The contract test already runs
-  against Pi; adding it for Gemini is the milestone's acceptance bar.
+- *Done since:* **function calling and approvals.** The adapter runs a bounded
+  tool loop (8 model turns) over `read_file`, `write_file` and `run_command`.
+  Reads are free; writes and commands ask through the same `dialog` protocol
+  the Pi gate uses, so the client renders its existing approval card and a
+  deny means the tool never executes (asserted on the filesystem, not the
+  transcript). Paths outside the workspace are refused; command output and
+  file reads are capped.
+- *Remaining:* the contract suite (`tests/test_engine_adapter.py`) does not yet
+  run against Gemini, and the legacy adapter plus its OAuth module are still
+  in the tree. Those two are the milestone's acceptance bar.
 
 Total: roughly 3–4 focused weeks to M6, with a publishable v0.2 at M2.
 

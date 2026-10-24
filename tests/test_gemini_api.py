@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import sys
+import tempfile
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -50,6 +51,9 @@ class Fake(BaseHTTPRequestHandler):
 
     seen: list[dict] = []
     fail_status = 0
+    #: "none" streams text; "read" asks for read_file then answers;
+    #: "write" asks for write_file; "loop" asks forever
+    tool_mode = "none"
 
     def log_message(self, *_args):
         pass
@@ -71,12 +75,43 @@ class Fake(BaseHTTPRequestHandler):
             self._json(Fake.fail_status,
                        {"error": {"message": "API key not valid"}})
             return
+        body = Fake.seen[-1]["body"]
+        chunks = self._chunks_for(body)
         self.send_response(200)
         self.send_header("Content-Type", "text/event-stream")
         self.end_headers()
-        for chunk in STREAM_CHUNKS:
+        for chunk in chunks:
             self.wfile.write(b"data: " + json.dumps(chunk).encode() + b"\n\n")
             self.wfile.flush()
+
+    def _chunks_for(self, body: dict) -> list[dict]:
+        if Fake.tool_mode == "none":
+            return STREAM_CHUNKS
+        contents = body.get("contents") or []
+        answered = any(
+            isinstance(part, dict) and "functionResponse" in part
+            for entry in contents if isinstance(entry, dict)
+            for part in (entry.get("parts") or []))
+        if Fake.tool_mode == "loop" or not answered:
+            name = {"read": "read_file", "write": "write_file",
+                    "loop": "read_file"}.get(Fake.tool_mode, "read_file")
+            args = {"path": "notes.txt"}
+            if name == "write_file":
+                args = {"path": "written.txt", "content": "hello from the model"}
+            return [{"candidates": [{
+                "content": {"role": "model", "parts": [
+                    {"functionCall": {"name": name, "args": args}}]},
+                "finishReason": "STOP"}]}]
+        result = ""
+        for entry in contents:
+            for part in (entry.get("parts") or []):
+                if isinstance(part, dict) and "functionResponse" in part:
+                    result = json.dumps(part["functionResponse"]
+                                        .get("response", {}))
+        return [{"candidates": [{
+            "content": {"role": "model", "parts": [
+                {"text": f"Tool said: {result}"}]},
+            "finishReason": "STOP"}]}]
 
     def _json(self, status: int, payload: dict) -> None:
         raw = json.dumps(payload).encode()
@@ -169,6 +204,94 @@ def main() -> int:
     if seen["failed"]:
         failures.append("an HTTP error should not also emit failed")
 
+    # --- tools: read is free, write asks --------------------------------
+    workspace = Path(tempfile.mkdtemp(prefix="mantel-gem-ws-"))
+    (workspace / "notes.txt").write_text("the quick brown fox")
+    tool_adapter = gemini_api.GeminiAdapter(key="test-key", base=base)
+
+    Fake.tool_mode = "read"
+    turn = tool_adapter.run("read the notes", model="gemini-2.0-flash",
+                            cwd=str(workspace))
+    seen = collect(turn)
+    result = seen["finished"] or {}
+    print(f"  tool read -> status={result.get('status')!r} "
+          f"text={str(result.get('text'))[:60]!r}")
+    if result.get("status") != "SUCCESS":
+        failures.append(f"the read tool turn failed: {result.get('error')}")
+    if "quick brown fox" not in str(result.get("text")):
+        failures.append("the read tool's result never reached the model")
+    if len(Fake.seen) < 2:
+        failures.append("the loop did not send the tool result back")
+    requests = [json.loads(json.dumps(entry["body"])) for entry in Fake.seen]
+    if not any(entry.get("tools") for entry in requests):
+        failures.append("tool declarations were not sent to the API")
+
+    # --- a denied write leaves no file ----------------------------------
+    Fake.tool_mode = "write"
+    dialogs = []
+
+    def watch(_turn, request):
+        dialogs.append(request)
+        _turn.answer_dialog(request["id"], value="Deny")
+
+    turn = tool_adapter.run("write the file", model="gemini-2.0-flash",
+                            cwd=str(workspace))
+    turn.connect("dialog", watch)
+    seen = collect(turn)
+    print(f"  denied write -> dialogs={len(dialogs)} "
+          f"file={ (workspace / 'written.txt').exists() }")
+    if not dialogs:
+        failures.append("a write did not ask for approval")
+    elif dialogs[0].get("method") != "select":
+        failures.append(f"the approval card shape is wrong: {dialogs[0]}")
+    if (workspace / "written.txt").exists():
+        failures.append("a denied write still executed")
+    if "denied" not in str((seen["finished"] or {}).get("text", "")).lower():
+        failures.append("the model was not told the write was denied")
+
+    # --- an approved write executes -------------------------------------
+    Fake.tool_mode = "write"
+    turn = tool_adapter.run("write the file", model="gemini-2.0-flash",
+                            cwd=str(workspace))
+    turn.connect("dialog",
+                 lambda _t, request: _t.answer_dialog(request["id"],
+                                                      value="Allow once"))
+    seen = collect(turn)
+    print(f"  approved write -> file exists="
+          f"{(workspace / 'written.txt').exists()}")
+    if not (workspace / "written.txt").exists():
+        failures.append("an approved write did not execute")
+    elif (workspace / "written.txt").read_text() != "hello from the model":
+        failures.append("the written content is wrong")
+
+    # --- a path outside the workspace is refused ------------------------
+    outside = Path(tempfile.mkdtemp()) / "secret.txt"
+    outside.write_text("nope")
+    # no turn needed: check the guard directly
+    outside_turn = gemini_api.GeminiTurn(cwd=str(workspace))
+    tool_result = tool_adapter._run_tool(  # noqa: SLF001
+        outside_turn, {"name": "read_file",
+                       "args": {"path": str(outside)}})
+    if "error" not in tool_result:
+        failures.append(f"a path outside the workspace was not refused: "
+                        f"{tool_result}")
+    print(f"  outside path -> {tool_result.get('error', '')[:60]}")
+
+    # --- the loop is bounded --------------------------------------------
+    Fake.tool_mode = "loop"
+    Fake.seen.clear()
+    turn = tool_adapter.run("loop forever", model="gemini-2.0-flash",
+                            cwd=str(workspace))
+    turn.connect("dialog", lambda _t, request: _t.answer_dialog(
+        request["id"], value="Allow once"))
+    seen = collect(turn, timeout=30)
+    print(f"  loop bound -> status={(seen['finished'] or {}).get('status')!r} "
+          f"steps={len(Fake.seen)}")
+    requests_after = len(Fake.seen)
+    Fake.tool_mode = "none"
+    if requests_after > gemini_api.MAX_STEPS + 2:
+        failures.append(f"the tool loop was not bounded: {requests_after} calls")
+
     # --- the facade can select it ---------------------------------------
     import os  # noqa: PLC0415
 
@@ -183,8 +306,10 @@ def main() -> int:
             failures.append("MANTEL_ENGINE did not select the gemini adapter")
         if not engine.supports(engine_mod.CHAT):
             failures.append("the gemini adapter should support chat")
-        if engine.supports(engine_mod.TOOLS):
-            failures.append("the gemini adapter has no tool loop yet")
+        if not engine.supports(engine_mod.TOOLS):
+            failures.append("the gemini adapter should advertise its tool loop")
+        if not engine.supports(engine_mod.APPROVALS):
+            failures.append("the gemini adapter should advertise approvals")
         # chat surfaces must survive a chat-only engine
         from app.window import pages_for  # noqa: PLC0415
 
