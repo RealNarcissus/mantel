@@ -27,6 +27,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from app import engine as engine_mod
+from app import knowledge as knowledge_mod
 from app import memory as memory_mod
 from app import permissions
 
@@ -250,6 +251,9 @@ class Session:
     #: Facts about the user are prepended to every turn, budgeted.
     use_memory = True
 
+    #: Passages from the user's own notes, retrieved by the prompt.
+    use_knowledge = True
+
     def brief(self, prompt: str) -> str:
         """The prompt the agent actually receives.
 
@@ -260,6 +264,11 @@ class Session:
         prefix = ""
         if self.use_memory:
             prefix = memory_mod.profile_block(scope=self.memory_scope())
+        if self.use_knowledge and prompt.strip():
+            try:
+                prefix += knowledge_mod.context_block(prompt)
+            except Exception:  # noqa: BLE001 - notes must never block a turn
+                pass
         if self.mode == MODE_RESEARCH:
             return prefix + RESEARCH_BRIEF + prompt
         return prefix + prompt
