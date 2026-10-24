@@ -79,7 +79,10 @@ class AgyAdapter(EngineAdapter):
     """Drives `agy --print --output-format stream-json`."""
 
     name = "legacy-agy"
-    capabilities = frozenset({"tools", "permissions", "remote", "images"})
+    capabilities = frozenset({
+        "tools", "approvals", "sessions", "images", "remote", "account",
+        "connectors", "skills", "permission_file", "cli_flags",
+    })
 
     def __init__(self, binary: str | None = None) -> None:
         self.binary = binary or find_binary()

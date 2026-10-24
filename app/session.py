@@ -231,7 +231,14 @@ class Session:
 
     # -- configuration ------------------------------------------------------
     def flags(self) -> list[str]:
-        """Extra engine flags for the current approval mode."""
+        """Extra engine flags for the current approval mode.
+
+        Approval modes are a command-line concept of the legacy engine; an
+        engine that asks before acting (Pi) needs no flags and would reject
+        these. The capability decides, not the engine's name.
+        """
+        if not self.engine.supports(engine_mod.CLI_FLAGS):
+            return []
         mode = MODE_BY_KEY.get(self.approval, APPROVAL_MODES[0])
         return list(mode.flags)
 

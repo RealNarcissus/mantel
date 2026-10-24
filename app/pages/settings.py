@@ -64,7 +64,9 @@ class SettingsPage(Gtk.Box):
                  approval: str = "ask",
                  effort: str = "medium",
                  workspace: str = "",
-                 models: list[tuple[str, str]] | None = None) -> None:
+                 models: list[tuple[str, str]] | None = None,
+                 capabilities: frozenset[str] | None = None,
+                 engine_name: str = "") -> None:
         super().__init__(orientation=Gtk.Orientation.VERTICAL, spacing=0)
         self.add_css_class("content")
         self.set_margin_start(36)
@@ -82,6 +84,8 @@ class SettingsPage(Gtk.Box):
         self._effort = effort
         self._workspace = workspace
         self._models = models or []
+        self._capabilities = frozenset(capabilities or ())
+        self._engine_name = engine_name
 
         head = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
         titles = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
@@ -103,10 +107,11 @@ class SettingsPage(Gtk.Box):
         self.append(self._agent_card())
         self.append(spacer(height=22))
 
-        self.append(section_title("Connectivity", "devices"))
-        self.append(spacer(height=12))
-        self.append(self._remote_card())
-        self.append(spacer(height=22))
+        if "remote" in self._capabilities:
+            self.append(section_title("Connectivity", "devices"))
+            self.append(spacer(height=12))
+            self.append(self._remote_card())
+            self.append(spacer(height=22))
 
         self.append(section_title("Workspace", "folder"))
         self.append(spacer(height=12))
@@ -144,14 +149,23 @@ class SettingsPage(Gtk.Box):
         inner.set_margin_top(6)
         inner.set_margin_bottom(6)
 
-        modes = segmented([m.label for m in session_mod.APPROVAL_MODES],
-                          active=[m.key for m in session_mod.APPROVAL_MODES].index(
-                              self._approval)
-                          if self._approval in [m.key for m in
-                                                session_mod.APPROVAL_MODES] else 0,
-                          on_select=self._on_approval)
-        inner.append(_row("lock", "Approval mode",
-                          "What the agent may do without asking you.", modes))
+        if "cli_flags" in self._capabilities:
+            modes = segmented(
+                [m.label for m in session_mod.APPROVAL_MODES],
+                active=[m.key for m in session_mod.APPROVAL_MODES].index(
+                    self._approval)
+                if self._approval in [m.key for m in session_mod.APPROVAL_MODES]
+                else 0,
+                on_select=self._on_approval)
+            inner.append(_row("lock", "Approval mode",
+                              "What the agent may do without asking you.", modes))
+        else:
+            enforced = Gtk.Label(label="Enforced per call")
+            enforced.add_css_class("chip-grade")
+            inner.append(_row(
+                "lock", "Approvals",
+                "This engine asks before it acts; every tool call is gated by "
+                "the client's approval cards.", enforced))
         inner.append(divider())
 
         efforts = segmented(["Low", "Medium", "High", "Max"],
@@ -163,15 +177,16 @@ class SettingsPage(Gtk.Box):
                           efforts))
         inner.append(divider())
 
-        writable = permissions.writable()
-        state = Gtk.Label(label="Writable" if writable else "Read-only")
-        state.add_css_class("chip-grade")
-        inner.append(_row(
-            "save", "Permission file",
-            f"{permissions.config_path()} — "
-            + ("grants are saved here." if writable
-               else "this machine blocks writes, so approvals cannot persist."),
-            state))
+        if "permission_file" in self._capabilities:
+            writable = permissions.writable()
+            state = Gtk.Label(label="Writable" if writable else "Read-only")
+            state.add_css_class("chip-grade")
+            inner.append(_row(
+                "save", "Permission file",
+                f"{permissions.config_path()} — "
+                + ("grants are saved here." if writable
+                   else "this machine blocks writes, so approvals cannot persist."),
+                state))
         panel.append(inner)
         return panel
 
@@ -269,10 +284,12 @@ class SettingsPage(Gtk.Box):
                           f"Signed in as {acc.email or 'nobody'}.", about))
         inner.append(divider())
 
-        binary = engine_mod.find_binary() or "not found"
         engine = Gtk.Label(label=f"{len(self._models)} models")
         engine.add_css_class("chip-grade")
-        inner.append(_row("memory", "Agent engine", binary, engine))
+        detail = self._engine_name or "unknown"
+        if self._capabilities:
+            detail += " · " + ", ".join(sorted(self._capabilities))
+        inner.append(_row("memory", "Agent engine", detail, engine))
         panel.append(inner)
         return panel
 

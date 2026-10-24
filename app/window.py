@@ -26,16 +26,22 @@ from app import theme, topbar as topbar_mod
 from app.store import Store
 
 #: The surfaces in the rail, in the order the desktop app uses.
+#: (name, rail label, icon, capability the engine must provide)
 PAGES = (
-    ("chat", "Chat", "chat"),
-    ("tasks", "Tasks", "checklist"),
-    ("create", "Create", "add_image_spark"),
-    ("schedule", "Schedule", "schedule"),
-    ("connectors", "Connectors", "extension"),
-    ("skills", "Skills", "notes_spark"),
+    ("chat", "Chat", "chat", engine_mod.TOOLS),
+    ("tasks", "Tasks", "checklist", engine_mod.TOOLS),
+    ("create", "Create", "add_image_spark", engine_mod.IMAGES),
+    ("schedule", "Schedule", "schedule", engine_mod.TOOLS),
+    ("connectors", "Connectors", "extension", engine_mod.CONNECTORS),
+    ("skills", "Skills", "notes_spark", engine_mod.SKILLS),
 )
 
 EFFORTS = ("low", "medium", "high", "xhigh", "max")
+
+
+def pages_for(engine) -> list[tuple]:
+    """The surfaces this engine can back, in rail order."""
+    return [page for page in PAGES if engine.supports(page[3])]
 
 
 class Window(Adw.ApplicationWindow):
@@ -70,6 +76,11 @@ class Window(Adw.ApplicationWindow):
         else:
             self._account = account_mod.load_account()
 
+        # A surface exists only if the selected engine can back it. This is the
+        # promise of the adapter seam: switching engines changes what the app
+        # offers, not just who answers.
+        self._pages_for_engine = pages_for(engine)
+
         self.set_default_size(*size)
         self.set_title("Mantel")
 
@@ -87,6 +98,8 @@ class Window(Adw.ApplicationWindow):
             user_name=self._account.display_name,
             user_mail=self._account.email or "Not signed in",
             avatar_initials=self._account.initials,
+            nav_items=[("explore", "Goals", "")] + [
+                (icon, label, "") for _n, label, icon, _c in self._pages_for_engine],
         )
         self._sidebar_revealer = Gtk.Revealer()
         self._sidebar_revealer.set_transition_type(
@@ -192,18 +205,26 @@ class Window(Adw.ApplicationWindow):
 
     def _build_extra_pages(self) -> None:
         """The pages the worker modules provide, if they are present."""
-        try:
-            from app.pages.connectors import ConnectorsPage  # noqa: PLC0415
-            self.connectors = ConnectorsPage(on_changed=self._refresh_sidebar)
-            self._pages.add_named(self._own_scroller(self.connectors), "connectors")
-        except Exception:  # noqa: BLE001
-            self.connectors = None
-        try:
-            from app.pages.skills import SkillsPage  # noqa: PLC151
-            self.skills = SkillsPage(on_changed=self._refresh_sidebar)
-            self._pages.add_named(self._own_scroller(self.skills), "skills")
-        except Exception:  # noqa: BLE001
-            self.skills = None
+        # Connectors and Skills edit the *engine's* stores, so they only exist
+        # for an engine that has them.
+        self.connectors = None
+        if self.engine.supports(engine_mod.CONNECTORS):
+            try:
+                from app.pages.connectors import ConnectorsPage  # noqa: PLC0415
+                self.connectors = ConnectorsPage(
+                    on_changed=self._refresh_sidebar)
+                self._pages.add_named(
+                    self._own_scroller(self.connectors), "connectors")
+            except Exception:  # noqa: BLE001
+                self.connectors = None
+        self.skills = None
+        if self.engine.supports(engine_mod.SKILLS):
+            try:
+                from app.pages.skills import SkillsPage  # noqa: PL151
+                self.skills = SkillsPage(on_changed=self._refresh_sidebar)
+                self._pages.add_named(self._own_scroller(self.skills), "skills")
+            except Exception:  # noqa: BLE001
+                self.skills = None
         try:
             from app.pages.create import CreatePage  # noqa: PLC0415
             self.create = CreatePage(on_generate=self._generate_image)
@@ -239,18 +260,23 @@ class Window(Adw.ApplicationWindow):
                 effort=self.effort,
                 workspace=self.workspace,
                 models=self.engine.models(),
+                capabilities=self.engine.capabilities,
+                engine_name=self.engine.name,
             )
             self._pages.add_named(self._own_scroller(self.settings), "settings")
         except Exception:  # noqa: BLE001
             self.settings = None
-        try:
-            from app.pages.account import AccountPage  # noqa: PLC0415
-            self.account_page = AccountPage(
-                on_signed_in=self._on_signed_in,
-                on_signed_out=self._on_signed_out)
-            self._pages.add_named(self._own_scroller(self.account_page), "account")
-        except Exception:  # noqa: BLE001
-            self.account_page = None
+        self.account_page = None
+        if self.engine.supports(engine_mod.ACCOUNT):
+            try:
+                from app.pages.account import AccountPage  # noqa: PLC0415
+                self.account_page = AccountPage(
+                    on_signed_in=self._on_signed_in,
+                    on_signed_out=self._on_signed_out)
+                self._pages.add_named(
+                    self._own_scroller(self.account_page), "account")
+            except Exception:  # noqa: BLE001
+                self.account_page = None
 
     @staticmethod
     def _own_scroller(page: Gtk.Widget) -> Gtk.Widget:
@@ -280,13 +306,16 @@ class Window(Adw.ApplicationWindow):
 
     def _page_names(self) -> set[str]:
         """Every page actually present in the stack."""
-        wanted = ({"chat", "home", "account", "settings"}
-                  | {name for name, _l, _i in PAGES})
+        wanted = ({"chat", "home", "settings"}
+                  | {name for name, _l, _i, _c in self._pages_for_engine}
+                  | {"account"} if self.engine.supports(engine_mod.ACCOUNT)
+                  else {"chat", "home", "settings"}
+                  | {name for name, _l, _i, _c in self._pages_for_engine})
         return {name for name in wanted
                 if self._pages.get_child_by_name(name) is not None}
 
     def _title_for(self, page: str) -> str:
-        for name, label, _icon in PAGES:
+        for name, label, _icon, _cap in self._pages_for_engine:
             if name == page:
                 return label
         return {"home": "Overview", "account": "Account"}.get(page, "Overview")
@@ -294,7 +323,7 @@ class Window(Adw.ApplicationWindow):
     def _sidebar_label(self, page: str) -> str:
         if page == "home":
             return "Goals"
-        for name, label, _icon in PAGES:
+        for name, label, _icon, _cap in self._pages_for_engine:
             if name == page:
                 return label
         return ""          # the account page has no rail entry
@@ -347,6 +376,8 @@ class Window(Adw.ApplicationWindow):
             effort=self.effort,
             workspace=self.workspace,
             models=self.engine.models(),
+            capabilities=self.engine.capabilities,
+            engine_name=self.engine.name,
         )
         holder.remove(wrapper)
         self._pages.add_named(self._own_scroller(self.settings), "settings")
@@ -453,6 +484,11 @@ I also added a regression test for the missing check.
 
     def _on_signed_out(self) -> None:
         self._account = account_mod.load_account()
+
+        # A surface exists only if the selected engine can back it. This is the
+        # promise of the adapter seam: switching engines changes what the app
+        # offers, not just who answers.
+        self._pages_for_engine = pages_for(engine)
         self.sidebar.set_account("Mantel", "Not signed in", "?")
         self._refresh_sidebar()
 

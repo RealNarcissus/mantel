@@ -80,6 +80,20 @@ class SectionHead(Gtk.Button):
         self.set_child(box)
 
 
+#: The rail's surfaces, in order. The window filters this by what the selected
+#: engine actually provides, so a vendor-only page never appears for another
+#: engine.
+DEFAULT_NAV = (
+    ("chat", "Chat", ""),
+    ("explore", "Goals", ""),
+    ("checklist", "Tasks", ""),
+    ("add_image_spark", "Create", ""),
+    ("schedule", "Schedule", ""),
+    ("extension", "Connectors", ""),
+    ("notes_spark", "Skills", ""),
+)
+
+
 class Sidebar(Gtk.Box):
     """The full navigation rail."""
 
@@ -87,7 +101,8 @@ class Sidebar(Gtk.Box):
                  on_open=None, on_collapse=None, on_theme=None, on_account=None,
                  user_name: str = "Mantel", user_mail: str = "",
                  avatar_initials: str = "G",
-                 accent_icon: str = "gemini_spark"):
+                 accent_icon: str = "gemini_spark",
+                 nav_items=None):
         super().__init__(orientation=Gtk.Orientation.VERTICAL, spacing=0)
         self.add_css_class("sidebar")
         self.set_size_request(WIDTH, -1)
@@ -99,6 +114,7 @@ class Sidebar(Gtk.Box):
         self._on_open = on_open or (lambda _cid: None)
         self._on_theme = on_theme
         self._on_account = on_account
+        self._nav_items = tuple(nav_items or DEFAULT_NAV)
         self._items: dict[str, NavItem] = {}
         self._task_rows: list[Gtk.Button] = []
         self._ready = False
@@ -179,18 +195,7 @@ class Sidebar(Gtk.Box):
         label.set_margin_bottom(18)
         self.append(label)
 
-        # The surfaces the real desktop app puts in the rail: chat, the
-        # agentic task mode, the schedule, and the two customisation pages.
-        nav = [
-            ("chat", "Chat", ""),
-            ("explore", "Goals", ""),
-            ("checklist", "Tasks", ""),
-            ("add_image_spark", "Create", ""),
-            ("schedule", "Schedule", ""),
-            ("extension", "Connectors", ""),
-            ("notes_spark", "Skills", ""),
-        ]
-        for icon_name, text, badge in nav:
+        for icon_name, text, badge in self._nav_items:
             item = NavItem(icon_name, text, badge, self._navigate)
             self._items[text] = item
             self.append(item)

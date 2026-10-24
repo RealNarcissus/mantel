@@ -27,6 +27,11 @@ STEERING = "steering"         # a message can join a turn that is already runnin
 COMPACTION = "compaction"     # long conversations can be summarised
 IMAGES = "images"
 REMOTE = "remote"             # a remote-control daemon exists
+ACCOUNT = "account"           # the engine has a vendor account to sign in to
+CONNECTORS = "connectors"     # the engine owns an MCP/connector store
+SKILLS = "skills"             # the engine owns a skills store
+PERMISSION_FILE = "permission_file"   # grants live in the engine's own config
+CLI_FLAGS = "cli_flags"               # approval modes are CLI flags
 
 
 class Turn(GObject.Object):
