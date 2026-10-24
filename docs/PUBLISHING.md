@@ -1,7 +1,8 @@
 # Publishing checklist
 
-Mantel is ready to publish as a public portfolio repository. This is the audited
-short list: what is true, what to check, and exactly what to run.
+**Published:** <https://github.com/RealNarcissus/mantel> — public, `main`,
+tagged `v0.1.0` as a prerelease on 24 Oct 2026. The audit below is the record of
+what was checked before that; the checklist is kept for future releases.
 
 ## Audit result (24 Oct 2026)
 
