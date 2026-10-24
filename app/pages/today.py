@@ -21,6 +21,7 @@ from gi.repository import Gtk  # noqa: E402
 
 from app import calendar as calendar_store
 from app import memory as memory_store
+from app import plan as plan_store
 from app import schedules as schedule_store
 from app import theme  # noqa: F401  (registers the bundled fonts)
 from app import todos
@@ -65,6 +66,7 @@ class TodayPage(Gtk.Box):
                  on_open_chat: Callable[[], None] | None = None,
                  on_focus_done: Callable[[], None] | None = None,
                  on_open_settings: Callable[[], None] | None = None,
+                 on_plan_export: Callable[[str], None] | None = None,
                  engine_name: str = "",
                  model_label: str = "") -> None:
         super().__init__(orientation=Gtk.Orientation.VERTICAL, spacing=0)
@@ -80,6 +82,7 @@ class TodayPage(Gtk.Box):
         self._on_open_chat = on_open_chat or (lambda: None)
         self._on_focus_done = on_focus_done
         self._on_open_settings = on_open_settings or (lambda: None)
+        self._on_plan_export = on_plan_export or (lambda _path: None)
         self._engine_name = engine_name or "engine"
         self._model_label = model_label
 
@@ -98,6 +101,10 @@ class TodayPage(Gtk.Box):
                            "agent has been doing."))
         head.append(titles)
         head.append(hspacer())
+        plan_button = pill_button("Plan the day", "schedule",
+                                  on_click=self._show_plan)
+        plan_button.set_valign(Gtk.Align.CENTER)
+        head.append(plan_button)
         new_chat = pill_button("New thread", "chat", on_click=self._on_open_chat)
         new_chat.set_valign(Gtk.Align.CENTER)
         head.append(new_chat)
@@ -139,6 +146,63 @@ class TodayPage(Gtk.Box):
         right.append(self._memory_holder)
 
         self.refresh()
+
+    # -- planning -----------------------------------------------------------
+    def _show_plan(self) -> None:
+        """Propose time blocks for the day, and offer them as an .ics file."""
+        import gi as _gi  # noqa: PLC0415
+
+        _gi.require_version("Adw", "1")
+        from gi.repository import Adw as _Adw  # noqa: PLC0415
+
+        proposal = plan_store.plan_day()
+        dialog = _Adw.MessageDialog(transient_for=self.get_root(),
+                                    heading="Plan the day",
+                                    body="Proposed around what is already on "
+                                         "your calendar.")
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
+        box.set_margin_top(6)
+        if proposal.busy:
+            busy = Gtk.Label(
+                label="Meetings: " + ", ".join(
+                    f"{time.strftime('%H:%M', time.localtime(block['start']))} "
+                    f"{block['title']}" for block in proposal.busy[:4]),
+                xalign=0)
+            busy.add_css_class("metric-sub")
+            box.append(busy)
+        for block in proposal.blocks:
+            row = Gtk.Label(
+                label=f"{time.strftime('%H:%M', time.localtime(block.start))}"
+                      f"–{time.strftime('%H:%M', time.localtime(block.end))}  "
+                      f"{block.title}", xalign=0)
+            row.set_wrap(True)
+            box.append(row)
+        if not proposal.blocks:
+            empty = Gtk.Label(label="No free time left in the working day. "
+                                   "Nothing scheduled.", xalign=0)
+            empty.set_wrap(True)
+            box.append(empty)
+        if proposal.unscheduled:
+            more = Gtk.Label(label="Did not fit: " + ", ".join(
+                proposal.unscheduled[:4]), xalign=0)
+            more.add_css_class("metric-sub")
+            more.set_wrap(True)
+            more.set_margin_top(6)
+            box.append(more)
+        dialog.set_extra_child(box)
+        dialog.add_response("close", "Close")
+        if proposal.blocks:
+            dialog.add_response("export", "Export .ics")
+            dialog.set_response_appearance("export",
+                                           _Adw.ResponseAppearance.SUGGESTED)
+
+        def on_response(dlg, response):
+            if response == "export" and proposal.blocks:
+                path = plan_store.save_plan(proposal)
+                self._on_plan_export(path)
+
+        dialog.connect("response", on_response)
+        dialog.present()
 
     # -- focus --------------------------------------------------------------
     def _build_focus_card(self) -> Gtk.Widget:

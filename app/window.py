@@ -271,6 +271,7 @@ class Window(Adw.ApplicationWindow):
                 on_open_chat=self.new_chat,
                 on_focus_done=self._on_focus_done,
                 on_open_settings=lambda: self._go("settings"),
+                on_plan_export=self._on_plan_exported,
                 engine_name=self.engine.name,
                 model_label=self._current_model_label())
             self._pages.add_named(self._own_scroller(self.today_page), "today")
@@ -438,6 +439,9 @@ class Window(Adw.ApplicationWindow):
     def _knowledge_changed(self) -> None:
         """Index changed: the next turn sees the new notes, nothing to refresh."""
         self._refresh_settings()
+
+    def _on_plan_exported(self, path: str) -> None:
+        self._notify("Plan exported", f"Saved to {path}")
 
     def _refresh_review(self) -> None:
         page = getattr(self, "review_page", None)

@@ -38,6 +38,10 @@ a native Linux surface — without owning the intelligence itself.
   it retrieves relevant passages for each turn — local, read-only, incremental
   by mtime, capped so a large vault stays cheap. Lexical retrieval, not
   embeddings: it says so rather than pretending.
+- **Plan the day**: proposes time blocks for the day's pressing tasks inside
+  the real gaps between meetings — with buffers, no overlaps, and a plain
+  "did not fit" list. Export it as an `.ics` if you want it in your calendar;
+  the app does not write to it.
 - **Quiet proactivity**: bounded nudges — something starting soon, too much
   late, one morning brief — capped by a daily budget (default three) and quiet
   hours, both configurable in Settings. The app is allowed to volunteer
