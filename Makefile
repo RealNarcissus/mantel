@@ -25,7 +25,8 @@ install:
 
 test-offline:
 	@set -e; for t in test_schedules test_changes test_context_fallback \
-	          test_extras test_signin; do echo "== $$t"; $(PYTHON) tests/$$t.py; done
+	          test_extras test_signin test_engine_adapter; do \
+	          echo "== $$t"; $(PYTHON) tests/$$t.py; done
 
 test: test-offline
 	@set -e; for t in test_engine test_agent_flow test_scheduler_run; do \
