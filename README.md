@@ -34,6 +34,10 @@ a native Linux surface — without owning the intelligence itself.
 - **Today** is the home screen: what is due (overdue first), what is next this
   week, what the agent remembers, and the agent itself — with a quick-add box
   that turns "pay the invoice tomorrow at 5pm" into a dated task.
+- **Quiet proactivity**: bounded nudges — something starting soon, too much
+  late, one morning brief — capped by a daily budget (default three) and quiet
+  hours, both configurable in Settings. The app is allowed to volunteer
+  information; it is not allowed to become a notification feed.
 - **Weekly review**: counted from the app's own records — tasks finished,
   what slipped, focus hours, calendar hours, facts learned, compared with last
   week — with one button that hands those numbers to the agent to write the

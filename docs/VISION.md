@@ -132,10 +132,12 @@ is the chassis. Here is what hangs on it.
 > (`app/pages/today.py`, `app/focus.py`); **capture and the command palette**
 > (`app/palette.py`, `mantel --capture …`); and **read-only calendar** from
 > `.ics` files (`app/calendar.py`), with recurrences expanded into the day.
-> **P0 is complete.** P1 has started: the **weekly review** now counts the
-> week from local records (tasks, focus log, calendar, memory) and hands the
-> numbers to the agent for the narrative. Still open in P1: time-blocking
-> proposals, bounded proactivity and memory connectors.
+> **P0 is complete.** P1 is well underway: the **weekly review** counts the
+> week from local records and hands the numbers to the agent for the narrative,
+> and **bounded proactivity** now exists (`app/nudges.py`) — events starting
+> soon, too much overdue, one morning brief, all under a daily budget and quiet
+> hours, configurable in Settings. Still open in P1: time-blocking proposals and
+> memory connectors.
 
 | # | Feature | Why it earns the open | Acceptance |
 |---|---|---|---|

@@ -16,6 +16,7 @@ from gi.repository import Gtk  # noqa: E402
 from app import account as account_mod
 from app import engine as engine_mod
 from app import calendar as calendar_store
+from app import nudges as nudges_store
 from app import permissions
 from app import remote
 from app import session as session_mod
@@ -62,6 +63,7 @@ class SettingsPage(Gtk.Box):
                  on_shortcuts: Callable[[], None] | None = None,
                  on_about: Callable[[], None] | None = None,
                  on_calendar: Callable[[], None] | None = None,
+                 on_nudges: Callable[[], None] | None = None,
                  scheme: str = "light",
                  approval: str = "ask",
                  effort: str = "medium",
@@ -81,6 +83,7 @@ class SettingsPage(Gtk.Box):
             "workspace": on_workspace, "shortcuts": on_shortcuts,
             "about": on_about,
             "calendar": on_calendar,
+            "nudges": on_nudges,
         }
         self._scheme = scheme
         self._approval = approval
@@ -115,6 +118,11 @@ class SettingsPage(Gtk.Box):
             self.append(spacer(height=12))
             self.append(self._remote_card())
             self.append(spacer(height=22))
+
+        self.append(section_title("Proactivity", "notifications"))
+        self.append(spacer(height=12))
+        self.append(self._nudges_card())
+        self.append(spacer(height=22))
 
         self.append(section_title("Calendar", "calendar_month"))
         self.append(spacer(height=12))
@@ -248,6 +256,59 @@ class SettingsPage(Gtk.Box):
         root = self.get_root()
         if root is not None and hasattr(root, "_refresh_settings"):
             root._refresh_settings()
+
+    def _nudges_card(self) -> Gtk.Widget:
+        """The interruption budget: on/off, how many, and when the brief lands."""
+        policy = nudges_store.Proactivity.load()
+        panel = card()
+        inner = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+        for margin in ("start", "end"):
+            getattr(inner, f"set_margin_{margin}")(18)
+        inner.set_margin_top(6)
+        inner.set_margin_bottom(6)
+
+        switch = Gtk.Switch()
+        switch.set_active(bool(policy.enabled))
+        switch.set_valign(Gtk.Align.CENTER)
+        switch.connect("notify::active",
+                       lambda widget, _p: self._set_nudges(
+                           enabled=widget.get_active()))
+        inner.append(_row("notifications", "Nudges",
+                          "Bounded interruptions: something starting soon, too "
+                          "much late, and one morning brief.", switch))
+        inner.append(divider())
+
+        budgets = ["1", "2", "3", "5"]
+        active = budgets.index(str(policy.budget)) if str(
+            policy.budget) in budgets else 2
+        budget = segmented(budgets, active=active,
+                           on_select=lambda index: self._set_nudges(
+                               budget=budgets[index]))
+        inner.append(_row("bell", "Per day",
+                          "How many the app may show, across all rules.", budget))
+        inner.append(divider())
+
+        hours = ["07:00", "08:00", "09:00", "10:00"]
+        run_hours = [7, 8, 9, 10]
+        hour_active = run_hours.index(policy.brief_hour) if (
+            policy.brief_hour in run_hours) else 1
+        brief = segmented(hours, active=hour_active,
+                          on_select=lambda index: self._set_nudges(
+                              brief_hour=run_hours[index]))
+        inner.append(_row("light_mode", "Morning brief",
+                          "Once a day, after this hour: what the day holds.",
+                          brief))
+        panel.append(inner)
+        return panel
+
+    def _set_nudges(self, **changes) -> None:
+        policy = nudges_store.Proactivity.load()
+        for key, value in changes.items():
+            setattr(policy, key, value)
+        policy.save()
+        callback = self._callbacks.get("nudges")
+        if callback:
+            callback()
 
     def _calendar_card(self) -> Gtk.Widget:
         """Read-only .ics sources: the day without an account."""

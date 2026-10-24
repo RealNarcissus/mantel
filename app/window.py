@@ -203,8 +203,13 @@ class Window(Adw.ApplicationWindow):
         self._overlay.add_overlay(self.palette)
         self._install_palette_shortcut()
 
+        from app.nudges import NudgeRunner  # noqa: PLC0415
         from app.reminders import ReminderRunner  # noqa: PLC0415
         from app.scheduler import Scheduler  # noqa: PLC0415
+
+        self.nudges = NudgeRunner()
+        self.nudges.connect("nudge", self._on_nudge)
+        self.nudges.start()
 
         self.reminders = ReminderRunner()
         self.reminders.connect("due", self._on_reminder)
@@ -324,6 +329,7 @@ class Window(Adw.ApplicationWindow):
                 on_shortcuts=self._show_shortcuts,
                 on_about=self._show_about,
                 on_calendar=self._refresh_today,
+                on_nudges=self._nudges_changed,
                 scheme="light",
                 approval=self.approval,
                 effort=self.effort,
@@ -527,6 +533,7 @@ class Window(Adw.ApplicationWindow):
             on_shortcuts=self._show_shortcuts,
             on_about=self._show_about,
             on_calendar=self._refresh_today,
+            on_nudges=self._nudges_changed,
             scheme="light",
             approval=self.approval,
             effort=self.effort,
@@ -1324,6 +1331,16 @@ END:VCALENDAR
         if self.turn is not None:
             self.turn.cancel()
 
+    # -- proactivity --------------------------------------------------------
+    def _on_nudge(self, _runner, nudge) -> None:
+        """A budgeted nudge: notify, never steal focus."""
+        self._notify(nudge.title, nudge.body)
+
+    def _nudges_changed(self) -> None:
+        runner = getattr(self, "nudges", None)
+        if runner is not None:
+            runner.reload()
+
     # -- reminders ----------------------------------------------------------
     def _on_reminder(self, _runner, task) -> None:
         """A task's time arrived. Notify, and show it on the page."""
@@ -1726,6 +1743,9 @@ END:VCALENDAR
         reminders = getattr(self, "reminders", None)
         if reminders is not None:
             reminders.stop()
+        nudges = getattr(self, "nudges", None)
+        if nudges is not None:
+            nudges.stop()
         today = getattr(self, "today_page", None)
         if today is not None:
             today.stop()
