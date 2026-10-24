@@ -298,6 +298,14 @@ mine.
 
 ## Licence
 
-MIT — see [LICENSE](LICENSE). That covers this repository's code and
-documentation only; no assets extracted from any third-party application are
-included.
+MIT — see [LICENSE](LICENSE).
+
+### Third-party material
+
+The MIT licence covers this repository's source code and documentation only.
+No fonts, icon glyph sets, application icons, binaries or protocol dumps
+extracted from any third-party application are included. The screenshots are
+renders of this code with system fonts. [assets/README.md](assets/README.md)
+explains how to supply your own typography and icons. Captured public
+documentation used for research is described in
+[docs/research/README.md](docs/research/README.md).
