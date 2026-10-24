@@ -1,5 +1,9 @@
 """Connectors: the MCP servers the agent can use.
 
+This module drives a vendor-engine surface. It is gated on the legacy
+adapter's capabilities and is removed when that adapter goes away
+(docs/plan/pi-engine.md, M6).
+
 The real desktop app calls these "Connectors" (custom MCP apps are added by
 server URL).  The engine here manages them through its own CLI, so the
 client shells out to `agy mcp` rather than editing files behind its back.

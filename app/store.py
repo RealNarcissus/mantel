@@ -3,7 +3,7 @@
 Conversations are owned by the app rather than by the engine, so the sidebar,
 titles, search and deletion work regardless of what the engine persists. Each
 conversation keeps the engine-side id too, so a turn can be continued with
-`agy --conversation <id>` when the engine's own store is available.
+the engine's own session store when it has one.
 """
 from __future__ import annotations
 
@@ -48,7 +48,7 @@ class Conversation:
     title: str = "New chat"
     created: float = field(default_factory=time.time)
     updated: float = field(default_factory=time.time)
-    engine_id: str = ""          # agy conversation id, for --conversation resume
+    engine_id: str = ""          # the engine's conversation id, for resume
     context_lost: bool = False   # the engine could not resume; resend history
     cwd: str = ""
     model: str = ""

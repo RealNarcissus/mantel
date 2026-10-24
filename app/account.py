@@ -1,5 +1,9 @@
 """Google account sign-in for the Linux client.
 
+This module drives a vendor-engine surface. It is gated on the legacy
+adapter's capabilities and is removed when that adapter goes away
+(docs/plan/pi-engine.md, M6).
+
 The desktop app authenticates with a Google Account. The engine
 (`agy`, the Antigravity-lineage agent) reads its credentials from
 ``~/.gemini/oauth_creds.json`` — a file this module owns, so signing in here

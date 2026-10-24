@@ -1,5 +1,9 @@
 """Remote control: use this machine's agent from a phone.
 
+This module drives a vendor-engine surface. It is gated on the legacy
+adapter's capabilities and is removed when that adapter goes away
+(docs/plan/pi-engine.md, M6).
+
 The desktop app can be driven from the Gemini mobile app ("Add Computer"):
 the machine runs a background daemon, and the phone talks to it. The engine
 ships exactly that daemon, so the client exposes it rather than reimplementing
