@@ -15,7 +15,7 @@ history, tools, schedules — is engine-independent by design.
                         ├── spawn         pi --mode rpc   JSONL in / events out
                         │                 extension_ui_request / response
                         └── events   ─── engines/gemini_api.py   (REST, chat-only)
-                                      engines/legacy_agy.py     (v0.1 only)
+                                      engines/gemini_api.py     (public API)
  app/session.py    modes, approval state, tool records, work items
 ```
 
@@ -45,7 +45,7 @@ engine, credentials or network. See [plan/pi-engine.md](plan/pi-engine.md).
 4. **Settle** closes the bubble with duration and token usage.
 5. **Approvals**: with the Pi adapter the engine asks *before* running a tool
    (`extension_ui_request`), the card answers it (`extension_ui_response`), and
-   a deny means the tool never executes. With the legacy adapter, refusals are
+   a deny means the tool never executes. When an engine can only report a
    reported afterwards, so granting calls
    `permissions.allow(...)`, which writes a real rule into the engine's
    `config.json`, then the request is replayed.
@@ -62,15 +62,13 @@ engine, credentials or network. See [plan/pi-engine.md](plan/pi-engine.md).
 | `composer.py` | Prompt entry and the mode/model/effort/approval controls |
 | `chat_view.py` | Transcript, assistant bubbles, `WorkPanel`, `ChangesPanel` |
 | `engine.py` | Facade: selects an adapter, re-exports turn signals |
-| `engines/` | One adapter per engine (Pi RPC, Gemini SDK, legacy); the only code that spawns processes |
+| `engines/` | One adapter per engine (Pi RPC, Gemini API); the only code that spawns processes |
 | `session.py` | Modes, approval ladder state, tool records, work items |
 | `permissions.py` | Reads/writes the engine's permission config and trusted folders |
 | `approval.py` | Approval cards and the anchored stack |
 | `changes.py` | `git status` / `git diff` reader |
 | `schedules.py`, `scheduler.py` | Cron parser + store, and the in-app runner |
-| `account.py` | OAuth sign-in, credential file, identity |
-| `mcp.py`, `skills.py` | Connectors and skills, via the engine's stores |
-| `remote.py` | The engine's remote-control daemon |
+| `skills.py` | Skills the engine makes available |
 | `screenshot.py` | XDG portal capture with fallbacks |
 | `store.py` | Conversations on disk |
 | `theme.py` | Palette, generated stylesheet, icon loading |

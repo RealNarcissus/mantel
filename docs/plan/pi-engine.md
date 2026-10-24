@@ -1,6 +1,6 @@
 # Plan: Pi as the first engine
 
-**Status:** M0–M5 complete; M6 (Gemini parity, legacy deletion) in progress
+**Status:** M0–M6 complete. Pi is the default engine; the vendor path is gone.
 **Goal:** replace the legacy vendor engine with **Pi** (`pi --mode rpc`) as the
 default engine, without changing the shell, and then adopt **Pi Durable** for
 conversations and tasks.
@@ -230,9 +230,13 @@ reopening — for both a successful and a failing run.
   deny means the tool never executes (asserted on the filesystem, not the
   transcript). Paths outside the workspace are refused; command output and
   file reads are capped.
-- *Remaining:* the contract suite (`tests/test_engine_adapter.py`) does not yet
-  run against Gemini, and the legacy adapter plus its OAuth module are still
-  in the tree. Those two are the milestone's acceptance bar.
+- *Done since:* the contract suite runs against **Pi and Gemini**, and the
+  vendor path is deleted — `engines/legacy_agy.py`, `account.py` (OAuth),
+  `remote.py`, `mcp.py`, the account and connectors pages, the vendor
+  permission file, and their tests. The identity card is now local
+  (`LocalIdentity`), workspace trust is per session, and `Engine()` defaults to
+  Pi.
+- *Milestone bar met:* no vendor credential path remains in the repo.
 
 Total: roughly 3–4 focused weeks to M6, with a publishable v0.2 at M2.
 

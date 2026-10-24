@@ -134,11 +134,10 @@ stores are engine-independent.
 |---|---|---|
 | **Pi** ([pi.dev](https://pi.dev)) | **M3 complete — default target** | `pi --mode rpc`: streaming, tool events, models, effort, abort, sessions, and **pre-execution approvals** through the shipped gate extension (`pi-extensions/approvals.ts`). Verified against `pi` 1.4.0 and a protocol fake. Durability lands in M4. |
 | **Gemini API** | **implemented (chat, streaming, tools, approvals)** — set `GEMINI_API_KEY` | Speaks the public REST streaming API directly, with no third-party Python dependency. A real tool loop: `read_file` runs freely; `write_file` and `run_command` ask through the same approval cards every other engine uses, and a deny means the tool never runs. Verified against a local fake API — no key needed in CI. |
-| **Legacy vendor engine** | v0.1 only, being removed | The current working bridge drives a bundled CLI engine. It is why this repo exists and is documented in [docs/reverse-engineering/](docs/reverse-engineering/), but it depends on vendor-issued credentials and is not the future. |
 
 Swapping engines changes what the app *offers*, not how it feels: the same
 approval cards, work panel and transcript, and only the surfaces the engine can
-back. Run with `MANTEL_ENGINE=pi` and Connectors, Skills and the vendor account
+back. Run with `MANTEL_ENGINE=pi` and Skills, the account page and remote
 page are simply not there — no dead links, no fake settings. The adapter tests
 assert both halves of that.
 
@@ -158,8 +157,9 @@ python3 -m app.main --demo
 ```
 
 Requirements: Linux with GTK4 and libadwaita, Python 3.10+ (developed and
-tested on 3.14), PyGObject, Pycairo, and an engine — either the vendor CLI on
-`PATH`, `pi`, or a Gemini API key in `GEMINI_API_KEY`.
+tested on 3.14), PyGObject, Pycairo, and an engine — either `pi` on `PATH`
+(the default) or a Gemini API key in `GEMINI_API_KEY`. There is no vendor
+account, no OAuth and no bundled CLI.
 
 ```bash
 # Debian/Ubuntu
@@ -230,8 +230,6 @@ See [docs/reverse-engineering/](docs/reverse-engineering/).
 python3 tests/test_schedules.py          # cron maths, store, pause/resume
 python3 tests/test_changes.py            # the git reader, on a real repo
 python3 tests/test_context_fallback.py   # replayed history when resume fails
-python3 tests/test_extras.py             # parsers for remote/screenshot/create
-python3 tests/test_signin.py             # OAuth against a mock, incl. bad CSRF
 python3 tests/test_engine.py "Say OK"    # the live engine bridge
 python3 tests/test_agent_flow.py         # refuse -> approve -> the file appears
 python3 tests/test_scheduler_run.py      # a schedule fires a real agent turn
@@ -243,12 +241,6 @@ engine, not a mock.
 
 ## Limitations, honestly
 
-- **Engine migration is in progress.** The working bridge today is the legacy
-  vendor engine; Pi is the target and the reason for this rewrite. Until it
-  lands, the app is not quite the thing this README describes.
-- **Approvals cannot pause a vendor turn.** The legacy stream accepts one input
-  event, so a granted action costs a retry. The Pi path resolves approvals
-  before the tool runs.
 - **Durability is not wired yet.** Conversations survive restarts through a
   local store, but not the way Pi Durable commits state; scheduled prompts only
   run while the app is open.
