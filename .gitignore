@@ -71,3 +71,6 @@ desktop.ini
 *~
 .idea/
 .vscode/
+
+# local Pi install used to verify the adapter
+.pi-test/
