@@ -34,6 +34,10 @@ a native Linux surface — without owning the intelligence itself.
 - **Today** is the home screen: what is due (overdue first), what is next this
   week, what the agent remembers, and the agent itself — with a quick-add box
   that turns "pay the invoice tomorrow at 5pm" into a dated task.
+- **Calendar, read-only**: point it at an `.ics` export from any provider and
+  the day's events appear on Today and in Settings — no account, no OAuth, no
+  network. Recurrences (daily, weekly, monthly) and all-day events are
+  expanded; UTC is converted to local.
 - **Focus timer** lives on that screen, because a timer on its own page is a
   timer nobody starts.
 - **Command palette** (`Ctrl+K`): type what you mean — a task ("pay the

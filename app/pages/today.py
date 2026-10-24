@@ -19,6 +19,7 @@ import gi
 gi.require_version("Gtk", "4.0")
 from gi.repository import Gtk  # noqa: E402
 
+from app import calendar as calendar_store
 from app import memory as memory_store
 from app import schedules as schedule_store
 from app import theme  # noqa: F401  (registers the bundled fonts)
@@ -63,6 +64,7 @@ class TodayPage(Gtk.Box):
                  on_open_tasks: Callable[[], None] | None = None,
                  on_open_chat: Callable[[], None] | None = None,
                  on_focus_done: Callable[[], None] | None = None,
+                 on_open_settings: Callable[[], None] | None = None,
                  engine_name: str = "",
                  model_label: str = "") -> None:
         super().__init__(orientation=Gtk.Orientation.VERTICAL, spacing=0)
@@ -77,6 +79,7 @@ class TodayPage(Gtk.Box):
         self._on_open_tasks = on_open_tasks or (lambda: None)
         self._on_open_chat = on_open_chat or (lambda: None)
         self._on_focus_done = on_focus_done
+        self._on_open_settings = on_open_settings or (lambda: None)
         self._engine_name = engine_name or "engine"
         self._model_label = model_label
 
@@ -260,6 +263,7 @@ class TodayPage(Gtk.Box):
         upcoming = todos.upcoming()
         later = todos.someday()
 
+        self._left.append(self._schedule_card())
         self._left.append(self._today_card(due_today))
         self._left.append(self._upcoming_card(upcoming))
         if later:
@@ -267,6 +271,81 @@ class TodayPage(Gtk.Box):
 
         self._memory_holder.append(self._memory_card())
         self._refresh_schedule_line()
+
+    def _schedule_card(self) -> Gtk.Widget:
+        """Today's events, or an honest hint when no calendar is connected."""
+        sources = calendar_store.sources()
+        events = calendar_store.today() if sources else []
+
+        panel = card()
+        inner = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+        for margin in ("start", "end"):
+            getattr(inner, f"set_margin_{margin}")(18)
+        inner.set_margin_top(14)
+        inner.set_margin_bottom(14)
+
+        head = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        head.append(theme.icon("calendar_month", 16))
+        label = Gtk.Label(label="On the calendar", xalign=0)
+        label.add_css_class("card-title")
+        head.append(label)
+        head.append(hspacer())
+        count = Gtk.Label(label=calendar_store.summarise(events))
+        count.add_css_class("metric-sub")
+        head.append(count)
+        inner.append(head)
+
+        if not sources:
+            copy = body("No calendar connected. Add an .ics file in Settings "
+                        "and your day appears here — read-only, no account "
+                        "needed.")
+            copy.set_margin_top(8)
+            inner.append(copy)
+            open_settings = Gtk.Button(label="Add a calendar")
+            open_settings.add_css_class("chip-grade")
+            open_settings.set_halign(Gtk.Align.START)
+            open_settings.set_margin_top(10)
+            open_settings.connect("clicked",
+                                  lambda _b: self._on_open_settings())
+            inner.append(open_settings)
+            panel.append(inner)
+            return panel
+
+        if not events:
+            copy = body("Nothing on the calendar today.")
+            copy.set_margin_top(8)
+            inner.append(copy)
+            panel.append(inner)
+            return panel
+
+        for index, event in enumerate(events[:8]):
+            if index:
+                inner.append(divider())
+            row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+            row.set_margin_top(8)
+            row.set_margin_bottom(8)
+            when = Gtk.Label(
+                label="all day" if event.all_day
+                else time.strftime("%H:%M", time.localtime(event.start)),
+                xalign=0)
+            when.add_css_class("metric-sub")
+            when.set_size_request(58, -1)
+            row.append(when)
+            col = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=1)
+            col.set_hexpand(True)
+            title = Gtk.Label(label=event.title, xalign=0)
+            title.add_css_class("card-title")
+            title.set_ellipsize(3)
+            col.append(title)
+            if event.location:
+                place = Gtk.Label(label=event.location, xalign=0)
+                place.add_css_class("metric-sub")
+                place.set_ellipsize(3)
+                col.append(place)
+            row.append(col)
+            inner.append(row)
+        panel.append(inner)
+        return panel
 
     def _today_card(self, tasks: list[todos.Task]) -> Gtk.Widget:
         panel = card()

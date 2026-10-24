@@ -130,8 +130,10 @@ is the chassis. Here is what hangs on it.
 > Memory v1; and **Today** as the home screen, merging today's tasks, the week
 > ahead, undated work, remembered facts, the agent card and a focus timer
 > (`app/pages/today.py`, `app/focus.py`); **capture and the command palette**
-> (`app/palette.py`, `mantel --capture …`). That completes P0 except for
-> calendar reading, which is the next phase.
+> (`app/palette.py`, `mantel --capture …`); and **read-only calendar** from
+> `.ics` files (`app/calendar.py`), with recurrences expanded into the day.
+> **P0 is complete.** The next product phase is P1: time-blocking proposals,
+> bounded proactivity, memory connectors, and the weekly review.
 
 | # | Feature | Why it earns the open | Acceptance |
 |---|---|---|---|

@@ -264,6 +264,7 @@ class Window(Adw.ApplicationWindow):
                 on_open_tasks=lambda: self._go("tasks"),
                 on_open_chat=self.new_chat,
                 on_focus_done=self._on_focus_done,
+                on_open_settings=lambda: self._go("settings"),
                 engine_name=self.engine.name,
                 model_label=self._current_model_label())
             self._pages.add_named(self._own_scroller(self.today_page), "today")
@@ -314,6 +315,7 @@ class Window(Adw.ApplicationWindow):
                 on_workspace=self.pick_workspace,
                 on_shortcuts=self._show_shortcuts,
                 on_about=self._show_about,
+                on_calendar=self._refresh_today,
                 scheme="light",
                 approval=self.approval,
                 effort=self.effort,
@@ -494,6 +496,7 @@ class Window(Adw.ApplicationWindow):
             on_workspace=self.pick_workspace,
             on_shortcuts=self._show_shortcuts,
             on_about=self._show_about,
+            on_calendar=self._refresh_today,
             scheme="light",
             approval=self.approval,
             effort=self.effort,
@@ -591,6 +594,47 @@ I also added a regression test for the missing check.
             if reference.is_dir():
                 plugins_mod.install(reference)
             page = getattr(self, "plugins_page", None)
+            if page is not None:
+                page.refresh()
+        except Exception:  # noqa: BLE001
+            pass
+
+        try:
+            import datetime as _dt  # noqa: PLC0415
+
+            from app import calendar as calendar_mod  # noqa: PLC0415
+
+            today = _dt.date.today()
+            def stamp(hour: int) -> str:
+                return _dt.datetime.combine(
+                    today, _dt.time(hour=hour)).strftime("%Y%m%dT%H%M%S")
+
+            ics = f"""BEGIN:VCALENDAR
+VERSION:2.0
+BEGIN:VEVENT
+UID:design-review@demo
+SUMMARY:Design review
+DTSTART:{stamp(11)}
+DTEND:{stamp(12)}
+LOCATION:Room 2
+END:VEVENT
+BEGIN:VEVENT
+UID:focus-hour@demo
+SUMMARY:Focus hour
+DTSTART:{stamp(15)}
+DTEND:{stamp(16)}
+END:VEVENT
+BEGIN:VEVENT
+UID:release@demo
+SUMMARY:Release day
+DTSTART;VALUE=DATE:{today.strftime('%Y%m%d')}
+END:VEVENT
+END:VCALENDAR
+"""
+            demo_ics = _Path(_tempfile.mkdtemp(prefix="mantel-demo-ics-")) / "day.ics"
+            demo_ics.write_text(ics)
+            calendar_mod.add_source(str(demo_ics))
+            page = getattr(self, "today_page", None)
             if page is not None:
                 page.refresh()
         except Exception:  # noqa: BLE001
@@ -939,6 +983,47 @@ I also added a regression test for the missing check.
             if reference.is_dir():
                 plugins_mod.install(reference)
             page = getattr(self, "plugins_page", None)
+            if page is not None:
+                page.refresh()
+        except Exception:  # noqa: BLE001
+            pass
+
+        try:
+            import datetime as _dt  # noqa: PLC0415
+
+            from app import calendar as calendar_mod  # noqa: PLC0415
+
+            today = _dt.date.today()
+            def stamp(hour: int) -> str:
+                return _dt.datetime.combine(
+                    today, _dt.time(hour=hour)).strftime("%Y%m%dT%H%M%S")
+
+            ics = f"""BEGIN:VCALENDAR
+VERSION:2.0
+BEGIN:VEVENT
+UID:design-review@demo
+SUMMARY:Design review
+DTSTART:{stamp(11)}
+DTEND:{stamp(12)}
+LOCATION:Room 2
+END:VEVENT
+BEGIN:VEVENT
+UID:focus-hour@demo
+SUMMARY:Focus hour
+DTSTART:{stamp(15)}
+DTEND:{stamp(16)}
+END:VEVENT
+BEGIN:VEVENT
+UID:release@demo
+SUMMARY:Release day
+DTSTART;VALUE=DATE:{today.strftime('%Y%m%d')}
+END:VEVENT
+END:VCALENDAR
+"""
+            demo_ics = _Path(_tempfile.mkdtemp(prefix="mantel-demo-ics-")) / "day.ics"
+            demo_ics.write_text(ics)
+            calendar_mod.add_source(str(demo_ics))
+            page = getattr(self, "today_page", None)
             if page is not None:
                 page.refresh()
         except Exception:  # noqa: BLE001

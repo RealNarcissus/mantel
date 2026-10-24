@@ -15,6 +15,7 @@ from gi.repository import Gtk  # noqa: E402
 
 from app import account as account_mod
 from app import engine as engine_mod
+from app import calendar as calendar_store
 from app import permissions
 from app import remote
 from app import session as session_mod
@@ -60,6 +61,7 @@ class SettingsPage(Gtk.Box):
                  on_workspace: Callable[[], None] | None = None,
                  on_shortcuts: Callable[[], None] | None = None,
                  on_about: Callable[[], None] | None = None,
+                 on_calendar: Callable[[], None] | None = None,
                  scheme: str = "light",
                  approval: str = "ask",
                  effort: str = "medium",
@@ -78,6 +80,7 @@ class SettingsPage(Gtk.Box):
             "theme": on_theme, "approval": on_approval, "effort": on_effort,
             "workspace": on_workspace, "shortcuts": on_shortcuts,
             "about": on_about,
+            "calendar": on_calendar,
         }
         self._scheme = scheme
         self._approval = approval
@@ -112,6 +115,11 @@ class SettingsPage(Gtk.Box):
             self.append(spacer(height=12))
             self.append(self._remote_card())
             self.append(spacer(height=22))
+
+        self.append(section_title("Calendar", "calendar_month"))
+        self.append(spacer(height=12))
+        self.append(self._calendar_card())
+        self.append(spacer(height=22))
 
         self.append(section_title("Workspace", "folder"))
         self.append(spacer(height=12))
@@ -241,6 +249,82 @@ class SettingsPage(Gtk.Box):
         if root is not None and hasattr(root, "_refresh_settings"):
             root._refresh_settings()
 
+    def _calendar_card(self) -> Gtk.Widget:
+        """Read-only .ics sources: the day without an account."""
+        panel = card()
+        inner = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+        for margin in ("start", "end"):
+            getattr(inner, f"set_margin_{margin}")(18)
+        inner.set_margin_top(6)
+        inner.set_margin_bottom(6)
+
+        sources = calendar_store.sources()
+        row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        add = pill_button("Add .ics file", "add", on_click=self._add_calendar)
+        row.append(add)
+        inner.append(_row(
+            "calendar_month", "Calendar sources",
+            "iCalendar files, read-only. Export from any provider; no account "
+            "or network needed.", row))
+
+        if sources:
+            inner.append(divider())
+            for source in sources:
+                line = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL,
+                               spacing=8)
+                line.set_margin_top(6)
+                line.set_margin_bottom(6)
+                label = Gtk.Label(label=source, xalign=0)
+                label.add_css_class("metric-sub")
+                label.set_ellipsis if False else None
+                label.set_ellipsize(3)
+                label.set_hexpand(True)
+                line.append(label)
+                remove = Gtk.Button(label="Remove")
+                remove.add_css_class("chip-grade")
+                remove.connect("clicked",
+                               lambda _b, s=source: self._remove_calendar(s))
+                line.append(remove)
+                inner.append(line)
+        else:
+            inner.append(divider())
+            empty = Gtk.Label(label="No calendar connected.", xalign=0)
+            empty.add_css_class("metric-sub")
+            empty.set_margin_top(6)
+            empty.set_margin_bottom(6)
+            inner.append(empty)
+        panel.append(inner)
+        return panel
+
+    def _add_calendar(self) -> None:
+        dialog = Gtk.FileDialog()
+        dialog.set_title("Choose an .ics file")
+        dialog.set_filters(_ics_filters())
+
+        def done(file_dialog, result):
+            try:
+                folder = file_dialog.open_finish(result)
+            except GLib.Error:
+                return
+            path = folder.get_path() if folder is not None else None
+            if not path:
+                return
+            calendar_store.add_source(path)
+            self._calendar_changed()
+
+        from gi.repository import GLib  # noqa: PLC0415
+
+        dialog.open(self.get_root(), None, done)
+
+    def _remove_calendar(self, source: str) -> None:
+        calendar_store.remove_source(source)
+        self._calendar_changed()
+
+    def _calendar_changed(self) -> None:
+        callback = self._callbacks.get("calendar")
+        if callback:
+            callback()
+
     def _workspace_card(self) -> Gtk.Widget:
         panel = card()
         inner = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
@@ -315,3 +399,22 @@ class SettingsPage(Gtk.Box):
     def _on_workspace(self) -> None:
         if self._callbacks["workspace"]:
             self._callbacks["workspace"]()
+
+
+def _ics_filters():
+    """A filter for .ics files (and a fallback to everything)."""
+    import gi as _gi  # noqa: PLC0415
+
+    _gi.require_version("Gtk", "4.0")
+    from gi.repository import Gio as _Gio  # noqa: PLC0415
+
+    filters = _Gio.ListStore.new(Gtk.FileFilter)
+    ics = Gtk.FileFilter()
+    ics.set_name("Calendar files (.ics)")
+    ics.add_pattern("*.ics")
+    filters.append(ics)
+    everything = Gtk.FileFilter()
+    everything.set_name("All files")
+    everything.add_pattern("*")
+    filters.append(everything)
+    return filters
