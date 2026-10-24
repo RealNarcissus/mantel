@@ -708,6 +708,10 @@ I also added a regression test for the missing check.
             self.conversation = self.store.new(cwd=self.workspace)
         conv = self.conversation
         conv.cwd = self.workspace
+        # Build the fallback context *before* this message is in the history,
+        # otherwise the prompt repeats the question it is about to ask.
+        lost_context = not conv.engine_id or conv.context_lost
+        history = self._history_prefix(conv) if lost_context else ""
         conv.add("user", text)
         self.store.save(conv)
         self.composer.clear()
@@ -722,9 +726,7 @@ I also added a regression test for the missing check.
         msg = self.chat.begin_assistant(model=self._current_model_label())
         self.composer.set_streaming(True)
 
-        prompt = text
-        if not conv.engine_id or conv.context_lost:
-            prompt = self._history_prefix(conv) + text
+        prompt = history + text
         self._requested_engine_id = conv.engine_id
         self.turn = self.engine.run(
             prompt=self.session.brief(prompt),
@@ -738,8 +740,31 @@ I also added a regression test for the missing check.
         self.turn.connect("delta", lambda _t, d: msg.append_delta(d))
         self.turn.connect("thought", lambda _t, d: msg.append_thought(d))
         self.turn.connect("tool", self._on_tool)
+        self.turn.connect("dialog", self._on_dialog)
         self.turn.connect("finished", lambda _t, r: self._on_finished(msg, r))
         self.turn.connect("failed", lambda _t, e: self._on_failed(msg, e))
+
+    def _on_dialog(self, _turn, request: dict) -> None:
+        """The engine is blocked on a question. Show the card and answer it.
+
+        With Pi this is the approval path: `tool_call` asks before the tool
+        runs, so a deny means it never happened — no refusal to replay.
+        """
+        request_id = str((request or {}).get("id") or "")
+
+        def answer(choice) -> None:
+            turn = self.turn
+            if turn is None or not request_id:
+                return
+            if choice is None:
+                turn.answer_dialog(request_id, cancelled=True)
+            elif (request or {}).get("method") == "confirm":
+                turn.answer_dialog(request_id, confirmed=str(choice).lower()
+                                   in ("allow", "yes", "true", "ok", "allow once"))
+            else:
+                turn.answer_dialog(request_id, value=str(choice))
+
+        self._approvals.ask(request or {}, answer)
 
     def _on_started(self, _turn, engine_id: str) -> None:
         if self.conversation and engine_id:
@@ -800,6 +825,7 @@ I also added a regression test for the missing check.
         dialog.present()
 
     def _on_finished(self, msg, result: dict) -> None:
+        self._approvals.clear()
         self.composer.set_streaming(False)
         self.turn = None
         self.session.running = False
@@ -843,6 +869,11 @@ I also added a regression test for the missing check.
             gallery.refresh()
         self._notify_done()
 
+    def _deny_pending_question(self) -> bool:
+        """Escape denies a visible question before it stops the turn."""
+        stack = getattr(self, "_approvals", None)
+        return bool(stack is not None and stack.deny_current())
+
     def _on_failed(self, msg, message: str) -> None:
         self.composer.set_streaming(False)
         self.turn = None
@@ -864,6 +895,9 @@ I also added a regression test for the missing check.
             pass
 
     def stop(self) -> None:
+        """Escape / the stop button: deny a pending question first, else stop."""
+        if self._deny_pending_question():
+            return
         if self.turn is not None:
             self.turn.cancel()
 
