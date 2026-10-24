@@ -197,6 +197,10 @@ supply your own copies: [assets/README.md](assets/README.md).
 ```
 
 - [docs/PLUGINS.md](docs/PLUGINS.md) — the plugin contract and security model.
+- [SECURITY.md](SECURITY.md) — trust model, the approval gate, and what is
+  deliberately not sandboxed.
+- [CONTRIBUTING.md](CONTRIBUTING.md) — setup, the two gates, and the ground
+  rules for the engine seam.
 - [docs/VISION.md](docs/VISION.md) — the product thesis and feature plan.
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — modules, data flow, decisions.
 - [docs/DESIGN.md](docs/DESIGN.md) — the design system, measured.

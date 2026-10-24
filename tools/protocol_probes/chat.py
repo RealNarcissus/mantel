@@ -10,6 +10,7 @@ Live calls need a Google OAuth token (client/auth.py); `selfcheck` runs offline.
 """
 import argparse
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -181,7 +182,8 @@ def probe(token, host=CLOUDCODE_HOST):
 def run_agy(prompt, model=None, effort=None, timeout=300):
     """Chat via the Antigravity CLI (agy): Pro-subscription models, the
     supported successor client to the deprecated Gemini CLI."""
-    binary = shutil.which("agy") or "/home/charleton/.local/bin/agy"
+    binary = shutil.which("agy") or os.path.expanduser(
+        "~/.local/bin/agy")
     cmd = [binary, "--print", prompt]
     if model:
         cmd += ["--model", model]
