@@ -38,6 +38,9 @@ a native Linux surface — without owning the intelligence itself.
   it retrieves relevant passages for each turn — local, read-only, incremental
   by mtime, capped so a large vault stays cheap. Lexical retrieval, not
   embeddings: it says so rather than pretending.
+- **Survives a crash**: a turn in flight is recorded; if the app dies, the
+  conversation reopens with the interrupted turn marked and one click to
+  continue — no lost thread, no silent "running" state.
 - **Plan the day**: proposes time blocks for the day's pressing tasks inside
   the real gaps between meetings — with buffers, no overlaps, and a plain
   "did not fit" list. Export it as an `.ics` if you want it in your calendar;

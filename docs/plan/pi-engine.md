@@ -1,6 +1,6 @@
 # Plan: Pi as the first engine
 
-**Status:** M0–M3 complete; M4 (durability) in progress
+**Status:** M0–M4 complete; M5/M6 remaining
 **Goal:** replace the legacy vendor engine with **Pi** (`pi --mode rpc`) as the
 default engine, without changing the shell, and then adopt **Pi Durable** for
 conversations and tasks.
@@ -183,9 +183,21 @@ steering while busy, compaction surfaced as a work item. *Done so far:*
   is matched as a contiguous run inside the engine's history, with a
   content-merge fallback when the two diverge.
 
-*Remaining:* an app-level `kill -9` harness (the current test kills the engine
-process), and a way to resume an interrupted turn from the UI rather than
-re-asking.
+*Done since:*
+- **An app-level `kill -9` harness.** The app is started mid-turn against the
+  fake engine, killed with SIGKILL once the store records a pending turn, then
+  restarted; the conversation is marked interrupted rather than left running or
+  lost. This is the acceptance bar the plan set, as a test.
+- **A resume affordance.** A turn in flight is recorded (`pending_prompt`); on
+  load it becomes `interrupted`, and the transcript shows a card with
+  *Continue* (asks the agent to pick the work back up) and *Dismiss*. The card
+  is a real UI element, verified by rendering it.
+
+*Found while writing that test:* a patch aimed at `load_demo` had also applied
+to `submit()` (string replacement hit both), so every message wrote sample
+tasks, installed the example plugin and attempted demo calendar/notes setup,
+while the memory-capture block was shadowed. Removed, and the test now asserts
+`submit()` contains no demo seeding.
 
 **M5 — schedules become durable tasks (3–4 days)**
 Evaluate Pi Durable's background tasks for scheduled prompts (including the
