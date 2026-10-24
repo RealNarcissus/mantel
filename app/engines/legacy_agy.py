@@ -80,7 +80,7 @@ class AgyAdapter(EngineAdapter):
 
     name = "legacy-agy"
     capabilities = frozenset({
-        "tools", "approvals", "sessions", "images", "remote", "account",
+        "chat", "tools", "approvals", "sessions", "images", "remote", "account",
         "connectors", "skills", "permission_file", "cli_flags",
     })
 

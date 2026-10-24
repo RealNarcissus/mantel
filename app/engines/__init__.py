@@ -37,6 +37,7 @@ def registry() -> dict[str, str]:
     return {
         "legacy": "app.engines.legacy_agy:AgyAdapter",
         "pi": "app.engines.pi_rpc:PiAdapter",
+        "gemini": "app.engines.gemini_api:GeminiAdapter",
     }
 
 

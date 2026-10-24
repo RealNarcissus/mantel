@@ -14,14 +14,14 @@ from __future__ import annotations
 import os
 
 from app.engines import DEFAULT_TIMEOUT, Turn, create, known, registry
-from app.engines.base import (ACCOUNT, APPROVALS, CLI_FLAGS, COMPACTION,
+from app.engines.base import (ACCOUNT, APPROVALS, CHAT, CLI_FLAGS, COMPACTION,
                               CONNECTORS, IMAGES, PERMISSION_FILE, REMOTE,
                               SESSIONS, SKILLS, STEERING, TOOLS)
 from app.engines.legacy_agy import find_binary  # noqa: F401  (re-exported)
 
 __all__ = [
     "Engine", "Turn", "find_binary", "DEFAULT_TIMEOUT", "known",
-    "TOOLS", "APPROVALS", "SESSIONS", "STEERING", "IMAGES", "REMOTE",
+    "CHAT", "TOOLS", "APPROVALS", "SESSIONS", "STEERING", "IMAGES", "REMOTE",
     "ACCOUNT", "CONNECTORS", "SKILLS", "COMPACTION", "PERMISSION_FILE",
     "CLI_FLAGS",
 ]

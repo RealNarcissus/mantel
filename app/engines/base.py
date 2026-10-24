@@ -20,7 +20,8 @@ DEFAULT_TIMEOUT = 0
 
 #: Capabilities an adapter may declare. The UI gates vendor-specific surfaces on
 #: these instead of assuming every engine has them.
-TOOLS = "tools"
+CHAT = "chat"                 # can hold a conversation at all
+TOOLS = "tools"               # can call tools (an agent, not just a model)
 APPROVALS = "approvals"       # the engine can ask before acting
 SESSIONS = "sessions"         # conversations can be resumed by id
 STEERING = "steering"         # a message can join a turn that is already running

@@ -30,13 +30,13 @@ from app.store import Store
 #: The surfaces in the rail, in the order the desktop app uses.
 #: (name, rail label, icon, capability the engine must provide)
 PAGES = (
-    ("today", "Today", "light_mode", engine_mod.TOOLS),
-    ("chat", "Chat", "chat", engine_mod.TOOLS),
-    ("tasks", "Tasks", "checklist", engine_mod.TOOLS),
+    ("today", "Today", "light_mode", engine_mod.CHAT),
+    ("chat", "Chat", "chat", engine_mod.CHAT),
+    ("tasks", "Tasks", "checklist", engine_mod.CHAT),
     ("create", "Create", "add_image_spark", engine_mod.IMAGES),
-    ("schedule", "Schedule", "schedule", engine_mod.TOOLS),
-    ("memory", "Memory", "lightbulb", engine_mod.TOOLS),
-    ("plugins", "Plugins", "tune", engine_mod.TOOLS),
+    ("schedule", "Schedule", "schedule", engine_mod.CHAT),
+    ("memory", "Memory", "lightbulb", engine_mod.CHAT),
+    ("plugins", "Plugins", "tune", engine_mod.CHAT),
     ("connectors", "Connectors", "extension", engine_mod.CONNECTORS),
     ("skills", "Skills", "notes_spark", engine_mod.SKILLS),
 )

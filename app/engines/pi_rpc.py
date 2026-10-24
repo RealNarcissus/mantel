@@ -41,8 +41,8 @@ gi.require_version("GLib", "2.0")
 from gi.repository import GLib  # noqa: E402
 
 from app.engines.base import (  # noqa: E402
-    APPROVALS, COMPACTION, DEFAULT_TIMEOUT, IMAGES, SESSIONS, STEERING, TOOLS,
-    EngineAdapter, Turn,
+    APPROVALS, CHAT, COMPACTION, DEFAULT_TIMEOUT, IMAGES, SESSIONS, STEERING,
+    TOOLS, EngineAdapter, Turn,
 )
 
 #: Set this to point at a specific `pi` binary (tests use a fake one).
@@ -176,7 +176,7 @@ class PiAdapter(EngineAdapter):
     """Drives the `pi` coding agent over its RPC protocol."""
 
     name = "pi"
-    capabilities = frozenset({TOOLS, APPROVALS, SESSIONS, STEERING,
+    capabilities = frozenset({CHAT, TOOLS, APPROVALS, SESSIONS, STEERING,
                               COMPACTION, IMAGES})
 
     def __init__(self, binary: str | None = None) -> None:
