@@ -30,6 +30,11 @@ test-offline:
 	          test_engine_adapter; do \
 	          echo "== $$t"; $(PYTHON) tests/$$t.py; done
 
+lint:
+	@UV_TOOL_DIR="$(PWD)/.cache/uv-tools" UV_TOOL_BIN_DIR="$(PWD)/.cache/uv-bin" \
+	 UV_CACHE_DIR="$(PWD)/.cache/uv" TMPDIR="$(PWD)/.cache/tmp" \
+	 uvx ruff@0.17.2 check app tests tools plugins pi-extensions
+
 test: test-offline
 
 screens:

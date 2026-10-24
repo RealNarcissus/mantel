@@ -7,6 +7,16 @@ on:
   workflow_dispatch:
 
 jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Ruff
+        uses: astral-sh/ruff-action@v3
+        with:
+          version: "0.17.2"
+          args: check app tests tools plugins pi-extensions
+
   offline:
     name: offline suite (no engine)
     runs-on: ubuntu-24.04
