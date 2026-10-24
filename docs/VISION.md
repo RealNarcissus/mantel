@@ -113,12 +113,12 @@ is the chassis. Here is what hangs on it.
 | **Tasks** | todos with natural-language dates and recurrence, priorities, waiting-on, project tags | exists as a list, needs a real model |
 | **Reminders** | time- and context-triggered; fire at the right surface, not just a notification | new |
 | **Threads** | conversations as durable, resumable threads with a memory scope and linked tasks | exists as chat, needs durability |
-| **Scheduled** | recurring prompts the agent runs (morning brief, weekly review) | exists, needs durability |
-| **Focus** | timers and focus sessions; agent holds interruptions and re-plans around them | new |
-| **Calendar** | read first (ICS/CalDAV), write later (time-blocking proposals) | new |
-| **Memory** | inspectable facts and profile: view, edit, forget, export; recall explainer | new |
-| **Plugins** | browse/install/configure extensions, connectors and skills | new (connectors exist) |
-| **Review** | end-of-day and weekly: what moved, what slipped, what to carry | new |
+| **Scheduled** | recurring prompts the agent runs (morning brief, weekly review) | shipped — each run is its own thread |
+| **Focus** | a 25-minute focus timer on Today; sessions are logged and counted in the review | shipped |
+| **Calendar** | read-only `.ics` sources on Today; time-blocking proposals, exportable as `.ics` | shipped (read + plan) |
+| **Memory** | inspectable facts, reinforcement, supersession, expiry, forget; note folders indexed as knowledge | shipped |
+| **Plugins** | extension host: manifest, capability sheet, out-of-process JSON-RPC, audit log, safe mode | shipped (declarative UI still to come) |
+| **Review** | weekly: what moved, what slipped, focus hours, what to carry | shipped |
 | **Agent surfaces** | transcript, work panel, approvals, changes | exists |
 
 ## 6. Feature set

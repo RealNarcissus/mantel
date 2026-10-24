@@ -132,14 +132,14 @@ stores are engine-independent.
 
 | Engine | Status | Notes |
 |---|---|---|
-| **Pi** ([pi.dev](https://pi.dev)) | **M3 complete — default target** | `pi --mode rpc`: streaming, tool events, models, effort, abort, sessions, and **pre-execution approvals** through the shipped gate extension (`pi-extensions/approvals.ts`). Verified against `pi` 1.4.0 and a protocol fake. Durability lands in M4. |
+| **Pi** ([pi.dev](https://pi.dev)) | **default engine** | `pi --mode rpc`: streaming, tool events, models, effort, abort, sessions, steering, compaction, crash recovery, and **pre-execution approvals** through the shipped gate extension (`pi-extensions/approvals.ts`). Verified against `pi` 1.4.0 and a protocol fake. |
 | **Gemini API** | **implemented (chat, streaming, tools, approvals)** — set `GEMINI_API_KEY` | Speaks the public REST streaming API directly, with no third-party Python dependency. A real tool loop: `read_file` runs freely; `write_file` and `run_command` ask through the same approval cards every other engine uses, and a deny means the tool never runs. Verified against a local fake API — no key needed in CI. |
 
 Swapping engines changes what the app *offers*, not how it feels: the same
 approval cards, work panel and transcript, and only the surfaces the engine can
-back. Run with `MANTEL_ENGINE=pi` and Skills, the account page and remote
-page are simply not there — no dead links, no fake settings. The adapter tests
-assert both halves of that.
+back. With `GEMINI_API_KEY` the client runs on the public API; with `pi` it
+runs on your own provider credentials. The adapter contract tests assert both
+halves of that.
 
 ## Run it
 
@@ -227,17 +227,17 @@ See [docs/reverse-engineering/](docs/reverse-engineering/).
 ## Tests
 
 ```bash
-python3 tests/test_schedules.py          # cron maths, store, pause/resume
-python3 tests/test_changes.py            # the git reader, on a real repo
-python3 tests/test_context_fallback.py   # replayed history when resume fails
-python3 tests/test_engine.py "Say OK"    # the live engine bridge
-python3 tests/test_agent_flow.py         # refuse -> approve -> the file appears
-python3 tests/test_scheduler_run.py      # a schedule fires a real agent turn
+make test-offline   # 17 suites, no engine and no network
+make lint           # ruff, pinned, same version as CI
 ```
 
-The last three need an engine on `PATH` and skip cleanly without one. They are
-the point of the project: approvals and scheduling are proven against a real
-engine, not a mock.
+Two things are worth knowing about the suite. It is **offline by design**:
+engine behaviour is exercised through protocol-faithful fakes
+(`tests/fixtures/fake_pi.py`, `tests/fixtures/fake_gemini.py`), so the contract,
+approval, kill-9 and scheduling tests run anywhere. And it is **behavioural** —
+the assertions are about what happened on disk, not what the transcript says: a
+denied write leaves no file, a completed task counts once, a killed app leaves a
+recoverable thread.
 
 ## Limitations, honestly
 
