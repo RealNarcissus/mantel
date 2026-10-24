@@ -19,8 +19,16 @@ from gi.repository import Adw, Gtk  # noqa: E402
 
 from app import plugins as store
 from app import theme  # noqa: F401  (registers the bundled fonts)
-from app.cards import (body, card, divider, hspacer, icon_square, pill_button,
-                       section_title, spacer)
+from app.cards import (
+    body,
+    card,
+    divider,
+    hspacer,
+    icon_square,
+    pill_button,
+    section_title,
+    spacer,
+)
 
 
 def _when(timestamp: float) -> str:

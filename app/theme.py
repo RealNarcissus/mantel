@@ -16,9 +16,9 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 
-from app import fonts_env  # noqa: F401  (sets FONTCONFIG_FILE before Pango)
-
 import gi
+
+from app import fonts_env  # noqa: F401  (sets FONTCONFIG_FILE before Pango)
 
 gi.require_version("Gtk", "4.0")
 gi.require_version("Gdk", "4.0")
@@ -326,7 +326,11 @@ label.md-h3 {{ font-size: 16px; font-weight: 600; }}
   background: @g-surface_alt; border: 1px solid @g-border; border-radius: 14px;
   padding: 14px 16px; font-size: 13.5px;
 }}
-.md-quote {{ color: @g-text_mid; border-left: 2px solid @g-border; padding-left: 14px; }}
+.md-quote {{
+  color: @g-text_mid;
+  border-left: 2px solid @g-border;
+  padding-left: 14px;
+}}
 .md-image {{ border-radius: 12px; }}
 .thought {{ color: @g-text_mid; font-size: 13.5px; }}
 .tool-block {{
@@ -448,12 +452,21 @@ label.md-h3 {{ font-size: 16px; font-weight: 600; }}
 .status-dot-error {{ background: #D97066; }}
 .status-pill.thinking {{ background: #DCE7FB; color: #17457F; }}
 .status-pill.error {{ background: #F7DDDB; color: #8C2B22; }}
-.composer textview, .composer text {{ background: transparent; color: @g-text; font-size: 15px; }}
+.composer textview, .composer text {{
+  background: transparent;
+  color: @g-text;
+  font-size: 15px;
+}}
 .composer-placeholder {{ color: @g-text_dim; }}
 .composer-btn {{  background-image: none;
  background: transparent; border: none; border-radius: 999px; padding: 8px; }}
 .composer-btn:hover {{ background: @g-field; }}
-.send-btn {{ background: @g-pill_bg; border: none; border-radius: 999px; padding: 9px; }}
+.send-btn {{
+  background: @g-pill_bg;
+  border: none;
+  border-radius: 999px;
+  padding: 9px;
+}}
 .send-btn:hover {{ opacity: .88; }}
 .send-btn:disabled {{ background: @g-field; }}
 

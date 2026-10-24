@@ -14,22 +14,32 @@ here.
 """
 from __future__ import annotations
 
-import math
 from collections.abc import Callable
 
-from app import theme  # noqa: F401  (registers the bundled fonts before Gtk)
-
-import cairo  # noqa: E402  (the Cairo context handed to draw callbacks)
 import gi
+
+from app import theme  # noqa: F401  (registers the bundled fonts before Gtk)
 
 gi.require_version("Gtk", "4.0")
 from gi.repository import Gdk, Gtk  # noqa: E402
 
-from app.cards import (body, card, chip, divider, eyebrow,  # noqa: E402
-                       icon_square, metric, pill_button, section_title,
-                       segmented, spacer, stat_tile, title)
-from app.hero_art import HeroArt  # noqa: E402
+from app.cards import (  # noqa: E402
+    body,
+    card,
+    chip,
+    divider,
+    eyebrow,
+    icon_square,
+    metric,
+    pill_button,
+    section_title,
+    segmented,
+    spacer,
+    stat_tile,
+    title,
+)
 from app.charts import BarChart, Sparkline  # noqa: E402
+from app.hero_art import HeroArt  # noqa: E402
 
 # --- content ----------------------------------------------------------------
 

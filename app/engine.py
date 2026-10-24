@@ -14,9 +14,23 @@ from __future__ import annotations
 import os
 
 from app.engines import DEFAULT_TIMEOUT, Turn, create, known, registry
-from app.engines.base import (ACCOUNT, APPROVALS, CHAT, CLI_FLAGS, COMPACTION,
-                              CONNECTORS, IMAGES, PERMISSION_FILE, REMOTE,
-                              SESSIONS, SKILLS, STEERING, TOOLS)
+from app.engines.base import (
+    ACCOUNT,
+    APPROVALS,
+    CHAT,
+    CLI_FLAGS,
+    COMPACTION,
+    CONNECTORS,
+    IMAGES,
+    PERMISSION_FILE,
+    REMOTE,
+    SESSIONS,
+    SKILLS,
+    STEERING,
+    TOOLS,
+)
+
+
 def find_binary(name: str) -> str:
     """Look for an executable on PATH (the adapters' shared helper)."""
     import shutil  # noqa: PLC0415

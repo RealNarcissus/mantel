@@ -18,8 +18,15 @@ from gi.repository import Adw, Gtk  # noqa: E402
 
 from app import memory as store
 from app import theme  # noqa: F401  (registers the bundled fonts)
-from app.cards import (body, card, divider, hspacer, icon_square, pill_button,
-                       section_title, segmented, spacer)
+from app.cards import (
+    body,
+    card,
+    hspacer,
+    icon_square,
+    pill_button,
+    segmented,
+    spacer,
+)
 
 #: Filters, in rail order.
 FILTERS = ("All", "Preferences", "Facts", "Commitments", "Projects")

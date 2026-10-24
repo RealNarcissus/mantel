@@ -8,12 +8,11 @@ plugins in the engine's local config directory, each with a ``plugin.json``.
 from __future__ import annotations
 
 import json
+import os  # noqa: E402
 import re
 import zipfile
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
-
-import os  # noqa: E402
 
 
 def gemini_dir() -> Path:

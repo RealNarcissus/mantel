@@ -6,22 +6,22 @@ PNG, which is how the UI is verified on hosts with no capturable compositor.
 from __future__ import annotations
 
 import argparse
-import os
 import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT.parent))
 
-from app import fonts_env  # noqa: F401,E402  (must precede Pango init)
-
 import gi  # noqa: E402
+
+from app import fonts_env  # noqa: F401,E402  (must precede Pango init)
 
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 from gi.repository import Adw, GLib, Gtk  # noqa: E402
 
-from app import engine as engine_mod, theme  # noqa: E402
+from app import engine as engine_mod  # noqa: E402
+from app import theme
 from app.quickchat import QuickChat  # noqa: E402
 from app.store import Store  # noqa: E402
 from app.window import Window  # noqa: E402
@@ -106,8 +106,8 @@ class Application(Adw.Application):
         return False
 
     def _smoke(self, window, own_size: bool = False) -> bool:
-        from tests.harness import render_to_png
         from gi.repository import GLib as _GLib
+
 
         # one more frame so the forced resize has been laid out
         _GLib.timeout_add(250, lambda: (self._smoke_now(window, own_size), False)[1])
@@ -137,8 +137,10 @@ def _capture(text: str) -> int:
     did, because silence after a hotkey is indistinguishable from failure.
     """
     from app import memory as memory_mod  # noqa: PLC0415
-    from app import palette  # noqa: PLC0415
-    from app import todos  # noqa: PLC0415
+    from app import (
+        palette,  # noqa: PLC0415
+        todos,  # noqa: PLC0415
+    )
 
     actions = palette.interpret(text)
     if not actions:

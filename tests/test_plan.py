@@ -16,11 +16,12 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from app import fonts_env  # noqa: F401,E402
-
 from app import calendar as calendar_store  # noqa: E402
-from app import plan  # noqa: E402
-from app import todos  # noqa: E402
+from app import (
+    fonts_env,  # noqa: F401,E402
+    plan,  # noqa: E402
+    todos,  # noqa: E402
+)
 
 
 def main() -> int:

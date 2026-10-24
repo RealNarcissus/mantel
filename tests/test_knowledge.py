@@ -10,15 +10,15 @@ from __future__ import annotations
 import os
 import sys
 import tempfile
-import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from app import fonts_env  # noqa: F401,E402
-
-from app import knowledge  # noqa: E402
+from app import (
+    fonts_env,  # noqa: F401,E402
+    knowledge,  # noqa: E402
+)
 
 NOTES = {
     "deploy.md": """# Deploying Mantel

@@ -52,7 +52,8 @@ def pill_button(label: str, icon_name: str = "", primary: bool = False,
     btn.add_css_class("btn-primary" if primary else "btn-secondary")
     row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
     if icon_name:
-        row.append(theme.icon(icon_name, 18, tone=theme.scheme().on_accent if primary else ""))
+        tone = theme.scheme().on_accent if primary else ""
+        row.append(theme.icon(icon_name, 18, tone=tone))
     lbl = Gtk.Label(label=label)
     row.append(lbl)
     btn.set_child(row)

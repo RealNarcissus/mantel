@@ -12,9 +12,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from app import fonts_env  # noqa: F401,E402
-
 import gi  # noqa: E402
+
+from app import fonts_env  # noqa: F401,E402
 
 gi.require_version("GLib", "2.0")
 from gi.repository import GLib  # noqa: E402

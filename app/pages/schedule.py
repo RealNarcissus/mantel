@@ -18,8 +18,16 @@ from gi.repository import Adw, Gtk  # noqa: E402
 from app import schedules as store
 from app import session as session_mod
 from app import theme  # noqa: F401  (registers the bundled fonts)
-from app.cards import (body, card, hspacer, icon_square, pill_button,
-                       section_title, segmented, spacer)
+from app.cards import (
+    body,
+    card,
+    hspacer,
+    icon_square,
+    pill_button,
+    section_title,
+    segmented,
+    spacer,
+)
 
 #: Filters in the segmented control.
 FILTERS = ("All", "Active", "Paused", "Completed")

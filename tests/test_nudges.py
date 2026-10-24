@@ -10,18 +10,18 @@ from __future__ import annotations
 import os
 import sys
 import tempfile
-import time
 from datetime import datetime, timedelta
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from app import fonts_env  # noqa: F401,E402
-
 from app import calendar as calendar_store  # noqa: E402
-from app import nudges  # noqa: E402
-from app import todos  # noqa: E402
+from app import (
+    fonts_env,  # noqa: F401,E402
+    nudges,  # noqa: E402
+    todos,  # noqa: E402
+)
 
 
 def write_ics(path: Path, start: datetime, duration_min: int, title: str,

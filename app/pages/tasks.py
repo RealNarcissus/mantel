@@ -17,8 +17,15 @@ from gi.repository import Gtk  # noqa: E402
 
 from app import theme  # noqa: F401  (registers the bundled fonts)
 from app import todos as store
-from app.cards import (body, card, hspacer, icon_square, pill_button,
-                       section_title, spacer)
+from app.cards import (
+    body,
+    card,
+    hspacer,
+    icon_square,
+    pill_button,
+    section_title,
+    spacer,
+)
 
 
 def _due_label(task: store.Task) -> str:

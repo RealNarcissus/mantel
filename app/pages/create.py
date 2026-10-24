@@ -22,8 +22,15 @@ gi.require_version("Adw", "1")
 from gi.repository import Gtk  # noqa: E402
 
 from app import theme  # noqa: F401  (registers the bundled fonts)
-from app.cards import (body, card, hspacer, icon_square, pill_button,
-                       section_title, spacer)
+from app.cards import (
+    body,
+    card,
+    hspacer,
+    icon_square,
+    pill_button,
+    section_title,
+    spacer,
+)
 
 #: The styles the Create surface offers.
 STYLES = ("Photo", "Illustration", "3D", "Minimal", "Watercolour")

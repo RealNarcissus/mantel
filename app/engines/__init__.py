@@ -24,8 +24,6 @@ runnable without any real engine installed.
 """
 from __future__ import annotations
 
-from typing import Protocol, runtime_checkable
-
 from app.engines.base import DEFAULT_TIMEOUT, EngineAdapter, Turn
 
 __all__ = ["DEFAULT_TIMEOUT", "EngineAdapter", "Turn", "registry", "create"]

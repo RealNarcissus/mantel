@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import json
 import os
-import shutil
 import sys
 import tempfile
 from pathlib import Path
@@ -17,9 +16,10 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from app import fonts_env  # noqa: F401,E402
-
-from app import plugins  # noqa: E402
+from app import (
+    fonts_env,  # noqa: F401,E402
+    plugins,  # noqa: E402
+)
 
 REFERENCE = ROOT / "plugins" / "day-summary"
 

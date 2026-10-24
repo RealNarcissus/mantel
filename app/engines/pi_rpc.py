@@ -41,8 +41,16 @@ gi.require_version("GLib", "2.0")
 from gi.repository import GLib  # noqa: E402
 
 from app.engines.base import (  # noqa: E402
-    APPROVALS, CHAT, COMPACTION, DEFAULT_TIMEOUT, IMAGES, SESSIONS, STEERING,
-    TOOLS, EngineAdapter, Turn,
+    APPROVALS,
+    CHAT,
+    COMPACTION,
+    DEFAULT_TIMEOUT,
+    IMAGES,
+    SESSIONS,
+    STEERING,
+    TOOLS,
+    EngineAdapter,
+    Turn,
 )
 
 #: Set this to point at a specific `pi` binary (tests use a fake one).

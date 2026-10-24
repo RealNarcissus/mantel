@@ -16,13 +16,13 @@ having to rebuild them.
 """
 from __future__ import annotations
 
-from app import theme  # noqa: E402  (imports fonts_env before GTK/Pango)
-
-import cairo
 import math
 import weakref
 
+import cairo
 import gi
+
+from app import theme  # noqa: E402  (imports fonts_env before GTK/Pango)
 
 gi.require_version("Gtk", "4.0")
 from gi.repository import Gdk, Gtk  # noqa: E402

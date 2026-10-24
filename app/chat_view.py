@@ -1,8 +1,6 @@
 """Transcript view: message list with live streaming and tool activity."""
 from __future__ import annotations
 
-import time
-
 import gi
 
 gi.require_version("Gtk", "4.0")
@@ -384,7 +382,8 @@ class ChatView(Gtk.ScrolledWindow):
         grid = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
         grid.set_halign(Gtk.Align.CENTER)
         for icon_name, label, prompt in (
-            ("search_spark", "Research a topic", "Research the latest developments in "),
+            ("search_spark", "Research a topic",
+             "Research the latest developments in "),
             ("code", "Write some code", "Write a Python script that "),
             ("notes_spark", "Summarise a file", "Summarise the file "),
             ("add_image_spark", "Work with images", "Describe this image: "),

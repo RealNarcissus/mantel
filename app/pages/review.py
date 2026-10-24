@@ -17,8 +17,16 @@ from gi.repository import Gtk  # noqa: E402
 
 from app import review as store
 from app import theme  # noqa: F401  (registers the bundled fonts)
-from app.cards import (body, card, divider, eyebrow, hspacer, metric,
-                       pill_button, section_title, spacer)
+from app.cards import (
+    body,
+    card,
+    divider,
+    eyebrow,
+    hspacer,
+    metric,
+    pill_button,
+    spacer,
+)
 
 
 def _hours(minutes: int) -> str:

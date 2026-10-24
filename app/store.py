@@ -16,8 +16,10 @@ from pathlib import Path
 
 
 def data_dir() -> Path:
-    base = Path(os.environ.get("XDG_DATA_HOME") or (Path.home() / ".local" / "share"))
-    for cand in (base / "gemini-desktop", Path(__file__).resolve().parent.parent / ".data"):
+    base = Path(os.environ.get("XDG_DATA_HOME")
+                or (Path.home() / ".local" / "share"))
+    here = Path(__file__).resolve().parent.parent
+    for cand in (base / "gemini-desktop", here / ".data"):
         try:
             (cand / "conversations").mkdir(parents=True, exist_ok=True)
             probe = cand / ".write-probe"

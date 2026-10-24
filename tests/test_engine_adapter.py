@@ -15,9 +15,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from app import fonts_env  # noqa: F401,E402
-
 import gi  # noqa: E402
+
+from app import fonts_env  # noqa: F401,E402
 
 gi.require_version("GLib", "2.0")
 from gi.repository import GLib  # noqa: E402
@@ -26,7 +26,8 @@ from app import engine as engine_mod  # noqa: E402
 from app.engines import base  # noqa: E402
 
 sys.path.insert(0, str(ROOT / "tests" / "fixtures"))
-from fake_gemini import Fake as FakeGemini, serve as serve_gemini  # noqa: E402
+from fake_gemini import Fake as FakeGemini  # noqa: E402
+from fake_gemini import serve as serve_gemini
 
 FAKE_PI = ROOT / "tests" / "fixtures" / "fake_pi.py"
 
@@ -157,7 +158,6 @@ def test_crash(failures: list[str]) -> None:
 def test_cancel(failures: list[str]) -> None:
     engine = pi_engine()
     turn = engine.run("slow")
-    state: dict = {}
 
     def once_a_delta(_t, _text):
         turn.cancel()
@@ -173,8 +173,6 @@ def test_cancel(failures: list[str]) -> None:
 
 def _answer_first_dialog(turn, choice, timeout: int = 15) -> dict:
     """Run a turn, answer its first dialog with `choice`, return what happened."""
-    state = {"seen": None, "text": []}
-
     def on_dialog(_turn, request):
         turn.answer_dialog(request["id"], value=choice)
         if request["method"] == "select" and choice is None:
@@ -280,8 +278,8 @@ def test_shipped_extension_loads(failures: list[str]) -> None:
     out = proc.stdout
     errors = [line for line in proc.stderr.splitlines()
               if "extension" in line.lower() and "error" in line.lower()]
-    print(f"  loaded with exit {proc.returncode}; "
-          f"responses={out.count('\"type\":\"response\"')}")
+    responses = out.count('"type":"response"')
+    print(f"  loaded with exit {proc.returncode}; responses={responses}")
     if '"command":"get_state"' not in out.replace(" ", ""):
         failures.append("pi did not answer get_state with the extension loaded")
     if errors:

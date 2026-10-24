@@ -22,11 +22,12 @@ sys.path.insert(0, str(ROOT / "tests" / "fixtures"))
 import gi  # noqa: E402
 
 gi.require_version("GLib", "2.0")
+from fake_gemini import Fake, serve  # noqa: E402
 from gi.repository import GLib  # noqa: E402
 
 from app import engine as engine_mod  # noqa: E402
 from app.engines import gemini_api  # noqa: E402
-from fake_gemini import Fake, serve  # noqa: E402
+
 
 def collect(turn, timeout: int = 20) -> dict:
     loop = GLib.MainLoop()

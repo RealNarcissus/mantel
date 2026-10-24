@@ -25,8 +25,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 from app import fonts_env  # noqa: F401,E402
-
-from app.store import Conversation, Store  # noqa: E402
+from app.store import Store  # noqa: E402
 
 
 def wait_for_pending(data_home: str, timeout: float = 40.0) -> Path | None:

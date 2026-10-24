@@ -23,10 +23,20 @@ from app import calendar as calendar_store
 from app import memory as memory_store
 from app import plan as plan_store
 from app import schedules as schedule_store
-from app import theme  # noqa: F401  (registers the bundled fonts)
-from app import todos
-from app.cards import (body, card, divider, eyebrow, hspacer, icon_square,
-                       metric, pill_button, section_title, spacer)
+from app import (
+    theme,  # noqa: F401  (registers the bundled fonts)
+    todos,
+)
+from app.cards import (
+    body,
+    card,
+    divider,
+    eyebrow,
+    hspacer,
+    metric,
+    pill_button,
+    spacer,
+)
 from app.focus import FocusTimer
 
 

@@ -17,12 +17,13 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from app import fonts_env  # noqa: F401,E402
-
 from app import calendar as calendar_store  # noqa: E402
-from app import memory  # noqa: E402
-from app import review  # noqa: E402
-from app import todos  # noqa: E402
+from app import (
+    fonts_env,  # noqa: F401,E402
+    memory,  # noqa: E402
+    review,  # noqa: E402
+    todos,  # noqa: E402
+)
 
 
 def main() -> int:
@@ -52,7 +53,7 @@ def main() -> int:
     todos.complete(old.id, now=(monday - timedelta(days=2)).timestamp())
 
     # overdue and open
-    late = todos.add("Pay the invoice", due=now - 86400)
+    todos.add("Pay the invoice", due=now - 86400)
     todos.add("Future thing", due=now + 3 * 86400)
 
     # --- focus sessions -------------------------------------------------

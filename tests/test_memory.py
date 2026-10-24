@@ -15,9 +15,10 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from app import fonts_env  # noqa: F401,E402
-
-from app import memory  # noqa: E402
+from app import (
+    fonts_env,  # noqa: F401,E402
+    memory,  # noqa: E402
+)
 
 
 def fresh() -> None:
@@ -111,7 +112,7 @@ def main() -> int:
 
     # --- forgetting ------------------------------------------------------
     memory.clear()
-    kept = memory.remember("Prefers tea", kind="preference")
+    memory.remember("Prefers tea", kind="preference")
     doomed = memory.remember("Uses Neovim", kind="preference")
     if not memory.forget(doomed.id):
         failures.append("forget() reported failure for a real fact")

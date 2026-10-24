@@ -10,15 +10,16 @@ import os
 import sys
 import tempfile
 import time
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from app import fonts_env  # noqa: F401,E402
-
-from app import calendar  # noqa: E402
+from app import (
+    calendar,  # noqa: E402
+    fonts_env,  # noqa: F401,E402
+)
 
 SAMPLE = """BEGIN:VCALENDAR
 VERSION:2.0

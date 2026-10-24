@@ -14,18 +14,26 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
-from app import theme  # noqa: F401  (registers the bundled fonts before Gtk)
-
 import gi
+
+from app import theme  # noqa: F401  (registers the bundled fonts before Gtk)
 
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 from gi.repository import Adw, Gdk, GLib, GObject, Gtk, Pango  # noqa: E402
 
 from app import skills  # noqa: E402
-from app.cards import (body, card, chip, eyebrow, icon_square, pill_button,  # noqa: E402
-                       section_title, spacer, title)
-
+from app.cards import (  # noqa: E402
+    body,
+    card,
+    chip,
+    eyebrow,
+    icon_square,
+    pill_button,
+    section_title,
+    spacer,
+    title,
+)
 
 # --- helpers ----------------------------------------------------------------
 

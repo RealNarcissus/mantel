@@ -13,9 +13,10 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from app import fonts_env  # noqa: F401
-
-from app import changes  # noqa: E402
+from app import (
+    changes,  # noqa: E402
+    fonts_env,  # noqa: F401
+)
 
 
 def git(repo: Path, *args: str) -> None:

@@ -15,6 +15,7 @@ sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "tests"))
 
 from harness import shoot  # noqa: E402
+
 from app import theme  # noqa: E402
 
 

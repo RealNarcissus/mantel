@@ -24,7 +24,6 @@ from __future__ import annotations
 import os
 import time
 from dataclasses import dataclass, field
-from pathlib import Path
 
 MUTATING = frozenset({
     "write_file", "edit_file", "replace", "run_command", "bash", "delete_file",
@@ -34,7 +33,6 @@ MUTATING = frozenset({
 from app import engine as engine_mod
 from app import knowledge as knowledge_mod
 from app import memory as memory_mod
-
 
 # --- approval modes --------------------------------------------------------
 
