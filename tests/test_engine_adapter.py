@@ -274,6 +274,49 @@ def test_shipped_extension_loads(failures: list[str]) -> None:
         failures.append(f"extension reported errors: {errors[:2]}")
 
 
+def test_capability_gating(failures: list[str]) -> None:
+    """Switching engines changes what the app offers, not just who answers."""
+    from app import session as session_mod  # noqa: PLC0415
+    from app.window import pages_for  # noqa: PLC0415
+
+    legacy = engine_mod.Engine(adapter="legacy")
+    pi = pi_engine()
+
+    for capability in ("account", "connectors", "skills", "permission_file",
+                       "cli_flags"):
+        if not legacy.supports(capability):
+            failures.append(f"the legacy engine should advertise {capability}")
+        if pi.supports(capability):
+            failures.append(f"pi should not advertise {capability}")
+    for capability in ("approvals", "sessions", "steering", "compaction"):
+        if not pi.supports(capability):
+            failures.append(f"pi should advertise {capability}")
+
+    # approval modes are CLI flags: they must never reach an engine that would
+    # reject them
+    pi_flags = session_mod.Session(pi, mode=session_mod.MODE_TASK,
+                                   approval="full").flags()
+    legacy_flags = session_mod.Session(legacy, mode=session_mod.MODE_TASK,
+                                       approval="full").flags()
+    print(f"  flags: pi={pi_flags} legacy={legacy_flags}")
+    if pi_flags:
+        failures.append(f"vendor approval flags leaked to pi: {pi_flags}")
+    if not legacy_flags:
+        failures.append("legacy full access should pass its own flags")
+
+    pi_pages = [page[0] for page in pages_for(pi)]
+    legacy_pages = [page[0] for page in pages_for(legacy)]
+    print(f"  pages: pi={pi_pages} legacy={legacy_pages}")
+    for vendor_page in ("connectors", "skills"):
+        if vendor_page in pi_pages:
+            failures.append(f"{vendor_page} shown for an engine without it")
+        if vendor_page not in legacy_pages:
+            failures.append(f"{vendor_page} missing for the legacy engine")
+    for shared in ("chat", "tasks", "create", "schedule"):
+        if shared not in pi_pages:
+            failures.append(f"{shared} missing for pi")
+
+
 def main() -> int:
     if not FAKE_PI.is_file():
         print(f"  missing fixture: {FAKE_PI}")
@@ -285,7 +328,7 @@ def main() -> int:
                  test_rejected_prompt, test_crash, test_cancel,
                  test_approval_allow, test_approval_deny,
                  test_facade, test_missing_engine,
-                 test_shipped_extension_loads):
+                 test_capability_gating, test_shipped_extension_loads):
         print(f"\n  {test.__name__}")
         test(failures)
 

@@ -72,13 +72,15 @@ stores are engine-independent.
 
 | Engine | Status | Notes |
 |---|---|---|
-| **Pi** ([pi.dev](https://pi.dev)) | **M2 complete — default target** | `pi --mode rpc`: streaming, tool events, models, effort, abort, sessions, and **pre-execution approvals** through the shipped gate extension (`pi-extensions/approvals.ts`). Verified against `pi` 1.4.0 and a protocol fake. Durability lands in M4. |
+| **Pi** ([pi.dev](https://pi.dev)) | **M2 complete · M3 in progress — default target** | `pi --mode rpc`: streaming, tool events, models, effort, abort, sessions, and **pre-execution approvals** through the shipped gate extension (`pi-extensions/approvals.ts`). Verified against `pi` 1.4.0 and a protocol fake. Durability lands in M4. |
 | **Gemini API** ([`google-genai`](https://pypi.org/project/google-genai/)) | planned | Direct SDK integration for people who want Gemini models with their own API key, including the Live API for voice. |
 | **Legacy vendor engine** | v0.1 only, being removed | The current working bridge drives a bundled CLI engine. It is why this repo exists and is documented in [docs/reverse-engineering/](docs/reverse-engineering/), but it depends on vendor-issued credentials and is not the future. |
 
-Swapping engines does not change what you see: the same approval cards, the
-same work panel, the same transcript. That is the point of the abstraction, and
-the engine adapter tests assert it.
+Swapping engines changes what the app *offers*, not how it feels: the same
+approval cards, work panel and transcript, and only the surfaces the engine can
+back. Run with `MANTEL_ENGINE=pi` and Connectors, Skills and the vendor account
+page are simply not there — no dead links, no fake settings. The adapter tests
+assert both halves of that.
 
 ## Run it
 

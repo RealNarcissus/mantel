@@ -1,6 +1,6 @@
 # Plan: Pi as the first engine
 
-**Status:** M0–M2 complete; M3 (capability gating + tool parity) is next
+**Status:** M0–M2 complete; M3 in progress (capability gating done)
 **Goal:** replace the legacy vendor engine with **Pi** (`pi --mode rpc`) as the
 default engine, without changing the shell, and then adopt **Pi Durable** for
 conversations and tasks.
@@ -148,11 +148,18 @@ denies the visible card before it stops the turn.
 - the shipped TypeScript gate loads in real `pi` (exit 0, `get_state` answered)
 - the gate is fail-closed outside RPC mode (`ctx.hasUI` false → block)
 
-**M3 — tool surface parity (2 days)**
-Tool events drive the work panel; get_state drives the status pill; screenshots
-and image generation keep working if the engine exposes them (else hidden
-behind a capability flag). *Done when:* the work panel, changes panel and
-status all behave as they do today.
+**M3 — tool surface parity (in progress)**
+- *Done:* capability gating. Every rail surface declares the capability it
+  needs, and the window builds only what the engine backs: Connectors and
+  Skills are gone for Pi, the account page is gone without an account, and
+  Settings hides the vendor permission file and the CLI approval-mode control
+  (Pi states "approvals are enforced per call" instead). Approval modes are
+  CLI flags, so the session never passes them to an engine that cannot take
+  them.
+- *Remaining:* tool events already drive the work panel; `get_state` should
+  drive the status pill, and the Pi-specific extras (compaction, steering)
+  need UI. *Done when:* the work panel, changes panel and status behave the
+  same on both engines.
 
 **M4 — durability (4–6 days)**
 Persistent Pi sessions: restore the transcript on start, resume after a kill,
