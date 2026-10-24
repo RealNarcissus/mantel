@@ -14,20 +14,19 @@ engine calls), so the images never contain a real account, e-mail or path.
 from __future__ import annotations
 
 import argparse
-import os
 import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from app import fonts_env  # noqa: F401,E402  (must precede Pango init)
-
 import gi  # noqa: E402
+
+from app import fonts_env  # noqa: F401,E402  (must precede Pango init)
 
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
-from gi.repository import Adw, GLib, Gtk  # noqa: E402
+from gi.repository import Adw, GLib  # noqa: E402
 
 from app import engine as engine_mod  # noqa: E402
 from app import store as store_mod  # noqa: E402

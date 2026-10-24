@@ -12,6 +12,7 @@ import os
 import subprocess
 import sys
 
+
 def schema(props, required=()):
     return {
         "type": "object",

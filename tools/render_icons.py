@@ -19,15 +19,13 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from app import fonts_env  # noqa: E402  (must precede Pango)
 
 import gi  # noqa: E402
 
 gi.require_version("Pango", "1.0")
 gi.require_version("PangoCairo", "1.0")
-from gi.repository import Pango, PangoCairo  # noqa: E402
-
 import cairo  # noqa: E402
+from gi.repository import Pango, PangoCairo  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / "assets" / "icons_rendered"
@@ -72,7 +70,8 @@ def main() -> int:
         ch = chr(int(cp))
         for fsuffix, family in FAMILIES.items():
             for csuffix, color in COLORS.items():
-                render(ch, family, args.size, color, OUT / f"{name}{fsuffix}{csuffix}.png")
+                target = OUT / f"{name}{fsuffix}{csuffix}.png"
+                render(ch, family, args.size, color, target)
                 n += 1
     print(f"rendered {n} icons ({len(data)} glyphs x {len(FAMILIES)} fills x "
           f"{len(COLORS)} tones) at {args.size}px -> {OUT}")

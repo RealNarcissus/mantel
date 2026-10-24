@@ -16,17 +16,25 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from app import fonts_env  # noqa: F401,E402
-
 import gi  # noqa: E402
+
+from app import fonts_env  # noqa: F401,E402
 
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 from gi.repository import Adw, Gtk  # noqa: E402
 
 from app import theme  # noqa: E402
-from app.cards import (body, card, divider, eyebrow, hspacer, icon_square,  # noqa: E402
-                       metric, pill_button, section_title, segmented, spacer)
+from app.cards import (  # noqa: E402
+    body,
+    card,
+    divider,
+    eyebrow,
+    hspacer,
+    metric,
+    pill_button,
+    spacer,
+)
 from tests.harness import render_to_png  # noqa: E402
 
 WIDTH, HEIGHT = 1744, 1168

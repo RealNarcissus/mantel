@@ -14,12 +14,25 @@ import os
 import re
 import sys
 from collections import defaultdict
+from pathlib import Path
 
-from google.protobuf import any_pb2, descriptor_pb2, duration_pb2, empty_pb2
-from google.protobuf import field_mask_pb2, struct_pb2, timestamp_pb2, wrappers_pb2
-from google.protobuf import text_format
-from google.protobuf.descriptor_pb2 import (DescriptorProto, EnumDescriptorProto,
-                                           EnumValueDescriptorProto, FileDescriptorProto)
+from google.protobuf import (
+    any_pb2,
+    descriptor_pb2,
+    duration_pb2,
+    empty_pb2,
+    field_mask_pb2,
+    struct_pb2,
+    text_format,
+    timestamp_pb2,
+    wrappers_pb2,
+)
+from google.protobuf.descriptor_pb2 import (
+    DescriptorProto,
+    EnumDescriptorProto,
+    EnumValueDescriptorProto,
+    FileDescriptorProto,
+)
 from google.protobuf.descriptor_pool import DescriptorPool
 from google.protobuf.message_factory import GetMessageClass
 
@@ -416,9 +429,12 @@ def main():
             print(f"  {e}")
 
     count = 0
-    for path in files:
+    for path in sorted(Path.cwd().rglob("*.proto")):
         d = FileDescriptorProto()
-        text_format.Parse(open(path).read(), d)
+        try:
+            text_format.Parse(path.read_text(errors="replace"), d)
+        except Exception:  # noqa: BLE001 - a probe, not a product path
+            continue
         for svc in d.service:
             count += len(svc.method)
     print(f"RPCs defined in descriptors: {count}")

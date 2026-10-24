@@ -4,9 +4,9 @@
 Used for the evidence cited in RE_REPORT.md (class map, selectors, reflection
 strings). Usage: python3 scripts/extract_macho_metadata.py <macho> <outdir>
 """
+import os
 import struct
 import sys
-import os
 
 WANT = [
     ('__TEXT', '__objc_classname'),
