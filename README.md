@@ -34,6 +34,10 @@ a native Linux surface — without owning the intelligence itself.
 - **Today** is the home screen: what is due (overdue first), what is next this
   week, what the agent remembers, and the agent itself — with a quick-add box
   that turns "pay the invoice tomorrow at 5pm" into a dated task.
+- **Weekly review**: counted from the app's own records — tasks finished,
+  what slipped, focus hours, calendar hours, facts learned, compared with last
+  week — with one button that hands those numbers to the agent to write the
+  narrative.
 - **Calendar, read-only**: point it at an `.ics` export from any provider and
   the day's events appear on Today and in Settings — no account, no OAuth, no
   network. Recurrences (daily, weekly, monthly) and all-day events are
@@ -95,7 +99,7 @@ a native Linux surface — without owning the intelligence itself.
 | ![Create](docs/screenshots/create.png) | ![Scheduled](docs/screenshots/schedule.png) |
 | ![Memory](docs/screenshots/memory.png) | ![Settings](docs/screenshots/settings.png) |
 | ![Overview dashboard](docs/screenshots/home.png) | ![Command palette](docs/screenshots/palette.png) |
-| ![Plugins](docs/screenshots/plugins.png) | ![Tasks](docs/screenshots/tasks.png) |
+| ![Plugins](docs/screenshots/plugins.png) | ![Weekly review](docs/screenshots/review.png) |
 
 Every image is an offscreen render of the real widget tree, produced by
 `tools/make_screenshots.py`. They use demo data, so no real account or path

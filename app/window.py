@@ -36,6 +36,7 @@ PAGES = (
     ("create", "Create", "add_image_spark", engine_mod.IMAGES),
     ("schedule", "Schedule", "schedule", engine_mod.CHAT),
     ("memory", "Memory", "lightbulb", engine_mod.CHAT),
+    ("review", "Review", "query_stats", engine_mod.CHAT),
     ("plugins", "Plugins", "tune", engine_mod.CHAT),
     ("connectors", "Connectors", "extension", engine_mod.CONNECTORS),
     ("skills", "Skills", "notes_spark", engine_mod.SKILLS),
@@ -271,6 +272,13 @@ class Window(Adw.ApplicationWindow):
         except Exception:  # noqa: BLE001
             self.today_page = None
         try:
+            from app.pages.review import ReviewPage  # noqa: PLC0415
+            self.review_page = ReviewPage(on_write=self._write_review)
+            self._pages.add_named(self._own_scroller(self.review_page),
+                                  "review")
+        except Exception:  # noqa: BLE001
+            self.review_page = None
+        try:
             from app.pages.plugins import PluginsPage  # noqa: PLC0415
             self.plugins_page = PluginsPage(on_changed=self._refresh_plugins)
             self._pages.add_named(self._own_scroller(self.plugins_page),
@@ -418,6 +426,22 @@ class Window(Adw.ApplicationWindow):
         if page is not None:
             page.refresh()
         self._refresh_today()
+        self._refresh_review()
+
+    def _refresh_review(self) -> None:
+        page = getattr(self, "review_page", None)
+        if page is not None:
+            page.refresh()
+
+    def _write_review(self, prompt: str) -> None:
+        """Hand the computed week to the agent and let it write the prose."""
+        self._go("chat")
+        self.composer.set_mode(session_mod.MODE_TASK)
+        self.session.mode = session_mod.MODE_TASK
+        buf = self.composer.view.get_buffer()
+        buf.set_text(prompt)
+        self.composer.view.set_opacity(1.0)
+        self.composer.focus()
 
     def _refresh_plugins(self) -> None:
         page = getattr(self, "plugins_page", None)
@@ -467,9 +491,15 @@ class Window(Adw.ApplicationWindow):
             self._refresh_sidebar()
 
     def _on_focus_done(self, *_args) -> None:
-        """A focus session ended: say so once, without stealing focus."""
+        """A focus session ended: log it, say so once, refresh the review."""
+        page = getattr(self, "today_page", None)
+        if page is not None:
+            from app import review  # noqa: PLC0415
+
+            review.record_focus(max(1, page.focus.total // 60))
         self._notify("Focus session complete",
                      "Time for a break — or start another.")
+        self._refresh_review()
 
     def _refresh_memory(self) -> None:
         page = getattr(self, "memory", None)
@@ -600,6 +630,18 @@ I also added a regression test for the missing check.
             pass
 
         try:
+            from app import review as review_mod  # noqa: PLC0415
+
+            for minutes in (25, 25, 50, 25):
+                review_mod.record_focus(minutes,
+                                        finished=_time.time() - 3600)
+            page = getattr(self, "review_page", None)
+            if page is not None:
+                page.refresh()
+        except Exception:  # noqa: BLE001
+            pass
+
+        try:
             import datetime as _dt  # noqa: PLC0415
 
             from app import calendar as calendar_mod  # noqa: PLC0415
@@ -648,9 +690,12 @@ END:VCALENDAR
                           "Draft the weekly note on Monday",
                           "Someday: read the durable harness docs"):
                 todos_mod.add(title)
-            done = todos_mod.add("Send the status update", due=0)
-            if done is not None:
-                todos_mod.complete(done.id)
+            for finished in ("Send the status update",
+                             "Fix the crash on startup",
+                             "Reply to the design thread"):
+                task = todos_mod.add(finished, due=0)
+                if task is not None:
+                    todos_mod.complete(task.id)
             page = getattr(self, "tasks", None)
             if page is not None:
                 page.refresh()
@@ -989,6 +1034,18 @@ END:VCALENDAR
             pass
 
         try:
+            from app import review as review_mod  # noqa: PLC0415
+
+            for minutes in (25, 25, 50, 25):
+                review_mod.record_focus(minutes,
+                                        finished=_time.time() - 3600)
+            page = getattr(self, "review_page", None)
+            if page is not None:
+                page.refresh()
+        except Exception:  # noqa: BLE001
+            pass
+
+        try:
             import datetime as _dt  # noqa: PLC0415
 
             from app import calendar as calendar_mod  # noqa: PLC0415
@@ -1037,9 +1094,12 @@ END:VCALENDAR
                           "Draft the weekly note on Monday",
                           "Someday: read the durable harness docs"):
                 todos_mod.add(title)
-            done = todos_mod.add("Send the status update", due=0)
-            if done is not None:
-                todos_mod.complete(done.id)
+            for finished in ("Send the status update",
+                             "Fix the crash on startup",
+                             "Reply to the design thread"):
+                task = todos_mod.add(finished, due=0)
+                if task is not None:
+                    todos_mod.complete(task.id)
             page = getattr(self, "tasks", None)
             if page is not None:
                 page.refresh()

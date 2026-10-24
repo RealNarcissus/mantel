@@ -193,7 +193,7 @@ def main(argv: list[str] | None = None) -> int:
                     choices=("home", "chat", "tasks", "schedule",
                              "connectors", "skills", "account",
                              "settings", "create", "memory", "today",
-                             "plugins"),
+                             "plugins", "review"),
                     help="which page to open on start")
     ap.add_argument("--scheme", default="light",
                     choices=("light", "dark", "system"),
