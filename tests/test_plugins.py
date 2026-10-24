@@ -67,6 +67,70 @@ def main() -> int:
         elif not issues:
             failures.append(f"{label} produced no explanation")
 
+    # --- declarative panels ---------------------------------------------
+    panel_raw = good_manifest(
+        permissions={"fs": "none", "ui": ["panel"]},
+        commands=[{"id": "go", "title": "Go"}],
+        panels=[{"id": "p", "title": "Panel", "slot": "today",
+                 "rows": [{"label": "Run it", "command": "go"}]}])
+    panel_manifest, panel_problems = plugins.parse_manifest(panel_raw)
+    print(f"  panel manifest: valid={panel_manifest is not None}")
+    if panel_manifest is None:
+        failures.append(f"a valid panel was rejected: {panel_problems}")
+    elif "add UI" not in " ".join(panel_manifest.capabilities):
+        failures.append("the capability sheet does not mention the panel")
+    for label, bad in {
+        "bad slot": {**panel_raw, "panels": [{
+            "id": "p", "title": "P", "slot": "everywhere",
+            "rows": [{"label": "x", "command": "go"}]}]},
+        "missing command": {**panel_raw, "panels": [{
+            "id": "p", "title": "P", "slot": "today",
+            "rows": [{"label": "x", "command": "nope"}]}]},
+        "no rows": {**panel_raw, "panels": [{
+            "id": "p", "title": "P", "slot": "today", "rows": []}]},
+        "too many rows": {**panel_raw, "panels": [{
+            "id": "p", "title": "P", "slot": "today",
+            "rows": [{"label": f"r{i}", "command": "go"} for i in range(9)]}]},
+    }.items():
+        got, issues = plugins.parse_manifest(bad)
+        if got is not None:
+            failures.append(f"{label} was accepted")
+        elif not issues:
+            failures.append(f"{label} produced no explanation")
+
+    # only enabled plugins that asked for UI contribute their panels
+    panel_source = Path(tempfile.mkdtemp(prefix="mantel-panel-"))
+    (panel_source / "mantel.json").write_text(json.dumps(panel_raw))
+    (panel_source / "main.py").write_text("print('{}')\n")
+    installed_panel, panel_errors = plugins.install(panel_source)
+    if installed_panel is None:
+        failures.append(f"the panel plugin did not install: {panel_errors}")
+    offered = plugins.panels("today")
+    print(f"  panels in slot 'today': {len(offered)}")
+    if not any(plugin.manifest.id == "com.test.sample"
+               for plugin, _panel in offered):
+        failures.append("an installed panel was not offered for its slot")
+    if plugins.panels("plugins"):
+        failures.append("a panel was offered outside its slot")
+    plugins.set_enabled("com.test.sample", False)
+    if plugins.panels("today"):
+        failures.append("a disabled plugin still contributes a panel")
+    plugins.set_enabled("com.test.sample", True)
+
+    # the shipped manifest itself must validate
+    import json as _json  # noqa: PLC0415
+
+    shipped = _json.loads((ROOT / "plugins" / "day-summary"
+                           / "mantel.json").read_text())
+    shipped_manifest, shipped_problems = plugins.parse_manifest(shipped)
+    print(f"  shipped manifest: valid={shipped_manifest is not None} "
+          f"panels={len(shipped_manifest.panels) if shipped_manifest else 0}")
+    if shipped_manifest is None:
+        failures.append(f"the shipped reference manifest is invalid: "
+                        f"{shipped_problems}")
+    elif not shipped_manifest.panels:
+        failures.append("the shipped reference plugin declares no panel")
+
     # --- capability sheet -----------------------------------------------
     risky, _ = plugins.parse_manifest(good_manifest(
         permissions={"fs": "workspace", "net": ["api.example.com"],

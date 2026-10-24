@@ -95,6 +95,15 @@ class PluginsPage(Gtk.Box):
         for plugin in plugins:
             self._list.append(self._card(plugin))
 
+        contributed = store.panels("plugins")
+        if contributed:
+            self._list.append(spacer(height=6))
+            self._list.append(section_title("Panels", "tune"))
+            for plugin, panel in contributed:
+                self._list.append(panel_card(
+                    plugin, panel,
+                    on_run=lambda p, command: self._run_panel(p, command)))
+
         audit = store.audit_log(12)
         if audit:
             self._list.append(spacer(height=6))
@@ -233,6 +242,23 @@ class PluginsPage(Gtk.Box):
         panel.append(inner)
         return panel
 
+    def _run_panel(self, plugin: store.Plugin, command_id: str) -> None:
+        ok, result = store.run_command(plugin, command_id,
+                                       store.context(plugin))
+        if not ok:
+            self._error(f"{plugin.manifest.name} failed", str(result))
+            return
+        message = ""
+        if isinstance(result, dict):
+            message = str(result.get("message") or result.get("text") or "")
+        elif result is not None:
+            message = str(result)
+        dialog = Adw.MessageDialog(
+            transient_for=self.get_root(), heading=plugin.manifest.name,
+            body=message[:800] or "Done.")
+        dialog.add_response("close", "Close")
+        dialog.present()
+
     # -- actions ------------------------------------------------------------
     def _install(self) -> None:
         dialog = Gtk.FileDialog()
@@ -358,16 +384,46 @@ class PluginsPage(Gtk.Box):
 
     def _context(self, plugin: store.Plugin) -> dict:
         """Only what this plugin declared it may see."""
-        permissions = plugin.manifest.permissions
-        context: dict = {"date": time.strftime("%A %d %B")}
-        if permissions.get("memory") in ("read", "write"):
-            from app import memory as memory_mod  # noqa: PLC0415
+        return store.context(plugin)
 
-            context["memory"] = [fact.text for fact in memory_mod.facts()[:10]]
-        # tasks are the client's own data and are passed as plain context
-        from app import todos  # noqa: PLC0415
 
-        open_tasks = todos.all_tasks(include_done=False)
-        context["tasks"] = [task.title for task in open_tasks[:20]]
-        context["overdue"] = sum(1 for task in open_tasks if task.overdue)
-        return context
+def panel_card(plugin, panel: dict, on_run) -> Gtk.Widget:
+    """Render one declarative panel: a titled card of command rows."""
+    panel_widget = card()
+    inner = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+    for margin in ("start", "end"):
+        getattr(inner, f"set_margin_{margin}")(18)
+    inner.set_margin_top(14)
+    inner.set_margin_bottom(14)
+
+    head = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+    badge = icon_square("extension", "", 16)
+    head.append(badge)
+    title = Gtk.Label(label=str(panel.get("title") or plugin.manifest.name),
+                      xalign=0)
+    title.add_css_class("card-title")
+    head.append(title)
+    head.append(hspacer())
+    source = Gtk.Label(label=plugin.manifest.name)
+    source.add_css_class("metric-sub")
+    head.append(source)
+    inner.append(head)
+
+    for index, row in enumerate(panel.get("rows") or []):
+        if index:
+            inner.append(divider())
+        line = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        line.set_margin_top(6)
+        line.set_margin_bottom(6)
+        label = Gtk.Label(label=str(row.get("label") or ""), xalign=0)
+        label.set_hexpand(True)
+        line.append(label)
+        button = Gtk.Button(label="Run")
+        button.add_css_class("chip-grade")
+        command = str(row.get("command") or "")
+        button.connect("clicked", lambda _b, c=command: on_run(plugin, c))
+        line.append(button)
+        inner.append(line)
+
+    panel_widget.append(inner)
+    return panel_widget

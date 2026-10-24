@@ -77,6 +77,8 @@ class TodayPage(Gtk.Box):
                  on_focus_done: Callable[[], None] | None = None,
                  on_open_settings: Callable[[], None] | None = None,
                  on_plan_export: Callable[[str], None] | None = None,
+                 panels_provider: Callable[[], list] | None = None,
+                 on_run_panel=None,
                  engine_name: str = "",
                  model_label: str = "") -> None:
         super().__init__(orientation=Gtk.Orientation.VERTICAL, spacing=0)
@@ -93,6 +95,8 @@ class TodayPage(Gtk.Box):
         self._on_focus_done = on_focus_done
         self._on_open_settings = on_open_settings or (lambda: None)
         self._on_plan_export = on_plan_export or (lambda _path: None)
+        self._panels_provider = panels_provider or (lambda: [])
+        self._on_run_panel = on_run_panel or (lambda _plugin, _command: None)
         self._engine_name = engine_name or "engine"
         self._model_label = model_label
 
@@ -345,6 +349,26 @@ class TodayPage(Gtk.Box):
 
         self._memory_holder.append(self._memory_card())
         self._refresh_schedule_line()
+        self._append_plugin_panels()
+
+    def _append_plugin_panels(self) -> None:
+        """Panels a plugin declared for this slot, rendered by the host."""
+        try:
+            contributed = self._panels_provider()
+        except Exception:  # noqa: BLE001 - a bad plugin must not break the day
+            return
+        if not contributed:
+            return
+        try:
+            from app.pages.plugins import panel_card  # noqa: PLC0415
+
+            self._left.append(spacer(height=6))
+            for plugin, panel in contributed:
+                self._left.append(panel_card(
+                    plugin, panel,
+                    on_run=lambda p, command: self._on_run_panel(p, command)))
+        except Exception:  # noqa: BLE001
+            pass
 
     def _schedule_card(self) -> Gtk.Widget:
         """Today's events, or an honest hint when no calendar is connected."""

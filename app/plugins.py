@@ -49,6 +49,13 @@ KNOWN_PERMISSIONS = frozenset(PERMISSION_KEYS)
 #: Safe mode: no plugin code runs at all.
 SAFE_MODE_ENV = "MANTEL_SAFE_MODE"
 
+#: Where a declarative panel may appear, and its limits. Panels are *data*:
+#: the host renders rows and buttons, the plugin never supplies markup.
+PANEL_SLOTS = ("today", "plugins")
+MAX_PANELS = 3
+MAX_PANEL_ROWS = 6
+MAX_ROW_LABEL = 80
+
 _ID = re.compile(r"^[a-z0-9]+(?:[._-][a-z0-9]+)+$")
 
 
@@ -99,6 +106,7 @@ class Manifest:
     api_version: int = API_VERSION
     permissions: dict = field(default_factory=dict)
     commands: list[dict] = field(default_factory=list)
+    panels: list[dict] = field(default_factory=list)
 
     @property
     def capabilities(self) -> list[str]:
@@ -117,7 +125,10 @@ class Manifest:
             out.append("run commands")
         ui = self.permissions.get("ui") or []
         if ui:
-            out.append("add UI: " + ", ".join(str(slot) for slot in ui))
+            rendered = ", ".join(str(panel.get("title") or "panel")
+                                 for panel in self.panels) or "none"
+            out.append("add UI: " + ", ".join(str(slot) for slot in ui)
+                       + f" ({rendered})")
         return out or ["no special access"]
 
 
@@ -184,13 +195,63 @@ def parse_manifest(raw: dict, *, source: str = "") -> tuple[Manifest | None, lis
             "description": str(command.get("description") or ""),
         })
 
+    panels_raw = raw.get("panels") or []
+    if not isinstance(panels_raw, list):
+        problems.append("panels must be a list")
+        panels_raw = []
+    if len(panels_raw) > MAX_PANELS:
+        problems.append(f"at most {MAX_PANELS} panels per plugin")
+        panels_raw = panels_raw[:MAX_PANELS]
+    declared_commands = {command["id"] for command in cleaned_commands}
+    cleaned_panels = []
+    for panel in panels_raw:
+        if not isinstance(panel, dict):
+            problems.append("each panel must be an object")
+            continue
+        panel_id = str(panel.get("id") or "").strip()
+        title = str(panel.get("title") or "").strip()
+        slot = str(panel.get("slot") or "").strip()
+        if not panel_id or not title:
+            problems.append("panels need an id and a title")
+            continue
+        if slot not in PANEL_SLOTS:
+            problems.append(f"panel slot must be one of {list(PANEL_SLOTS)}")
+            continue
+        rows_raw = panel.get("rows") or []
+        if not isinstance(rows_raw, list) or not rows_raw:
+            problems.append(f"panel {panel_id!r} needs at least one row")
+            continue
+        if len(rows_raw) > MAX_PANEL_ROWS:
+            problems.append(f"panel {panel_id!r} has more than "
+                            f"{MAX_PANEL_ROWS} rows")
+            rows_raw = rows_raw[:MAX_PANEL_ROWS]
+        rows = []
+        for row in rows_raw:
+            if not isinstance(row, dict):
+                problems.append(f"panel {panel_id!r} rows must be objects")
+                continue
+            label = str(row.get("label") or "").strip()
+            command_id = str(row.get("command") or "").strip()
+            if not label or len(label) > MAX_ROW_LABEL:
+                problems.append(f"panel {panel_id!r} rows need a label under "
+                                f"{MAX_ROW_LABEL} chars")
+                continue
+            if command_id not in declared_commands:
+                problems.append(f"panel {panel_id!r} row {label!r} refers to "
+                                f"an undeclared command {command_id!r}")
+                continue
+            rows.append({"label": label, "command": command_id})
+        if rows:
+            cleaned_panels.append({"id": panel_id, "title": title,
+                                   "slot": slot, "rows": rows})
+
     if problems:
         return None, problems
     return Manifest(id=plugin_id, name=name, version=version, entry=list(entry),
                     description=str(raw.get("description") or ""),
                     author=str(raw.get("author") or ""),
                     api_version=api, permissions=permissions,
-                    commands=cleaned_commands), []
+                    commands=cleaned_commands, panels=cleaned_panels), []
 
 
 # --- installed plugins ------------------------------------------------------
@@ -418,3 +479,37 @@ def run_command(plugin: Plugin, command_id: str,
     """Run one contributed command."""
     return call(plugin, "command", {"command": command_id,
                                     **(params or {})})
+
+
+def context(plugin: Plugin) -> dict:
+    """The data a plugin may see for a command call, per its declarations."""
+    import time  # noqa: PLC0415
+
+    from app import memory as memory_mod  # noqa: PLC0415
+    from app import todos  # noqa: PLC0415
+
+    permissions = plugin.manifest.permissions
+    payload: dict = {"date": time.strftime("%A %d %B")}
+    if permissions.get("memory") in ("read", "write"):
+        payload["memory"] = [fact.text for fact in memory_mod.facts()[:10]]
+    open_tasks = todos.all_tasks(include_done=False)
+    payload["tasks"] = [task.title for task in open_tasks[:20]]
+    payload["overdue"] = sum(1 for task in open_tasks if task.overdue)
+    return payload
+
+
+def panels(slot: str) -> list[tuple[Plugin, dict]]:
+    """Panels contributed for a slot, from enabled plugins that asked for UI.
+
+    Declarative only: a panel is a titled list of (label, command) rows. The
+    host decides how it looks, so a plugin cannot inject markup or run code at
+    render time.
+    """
+    out: list[tuple[Plugin, dict]] = []
+    for plugin in installed(include_disabled=False):
+        if "panel" not in (plugin.manifest.permissions.get("ui") or []):
+            continue
+        for panel in plugin.manifest.panels:
+            if panel.get("slot") == slot:
+                out.append((plugin, panel))
+    return out

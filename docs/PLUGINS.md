@@ -75,6 +75,41 @@ at install time and passes only the data a plugin asked for, but a determined
 plugin runs with your user's privileges. Install plugins you trust, and read the
 code — it is a folder.
 
+### Panels (declarative UI)
+
+A plugin may add a small panel to the app, but only as **data**. The host
+renders it; the plugin never supplies markup, styling or code that runs at
+render time.
+
+```json
+{
+  "permissions": { "ui": ["panel"], "...": "..." },
+  "commands": [{ "id": "summarise", "title": "Summarise my day" }],
+  "panels": [
+    {
+      "id": "day",
+      "title": "Day summary",
+      "slot": "plugins",
+      "rows": [{ "label": "Summarise my day", "command": "summarise" }]
+    }
+  ]
+}
+```
+
+Rules the host enforces:
+
+- `slot` is one of `plugins` or `today`; the panel appears only there.
+- at most 3 panels, 6 rows each, labels under 80 characters — a panel is a
+  shortcut, not an application.
+- every row's `command` must be one of the plugin's declared commands, so a
+  panel cannot reach around the command protocol.
+- the `ui: ["panel"]` permission must be declared; without it the panel is not
+  shown even if it validates.
+
+Rows run exactly like a palette command (`run_command`), with the same context
+rules and the same audit entry. The host renders the result as a dialog or
+notification.
+
 ### The protocol
 
 One JSON request in on stdin, one JSON response out on stdout:

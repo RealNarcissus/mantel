@@ -88,10 +88,11 @@ a native Linux surface — without owning the intelligence itself.
   an overdue state and time-based notifications while the app is open. The
   agent writes to the same store.
 - **Plugins**: a folder with a `mantel.json` and a program adds commands to the
-  palette. They run out of process with a per-call timeout, state what they may
+  palette — and, as data rather than markup, small panels to the Plugins page or
+  Today. They run out of process with a per-call timeout, state what they may
   touch, are never executed on install, and every action lands in an audit log.
   [docs/PLUGINS.md](docs/PLUGINS.md) has the contract; `plugins/day-summary` is a
-  working example.
+  working example with a declared panel.
 - **Memory you can inspect**: facts and preferences the agent knows about you,
   gathered from what you state plainly or added by hand, injected into each
   turn under a token budget — and listed with their source, age and expiry so

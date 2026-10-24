@@ -262,8 +262,11 @@ is capability tiers plus process isolation.
 > **v1 shipped:** extensions run out of process over JSON-RPC, with a
 > validated manifest, a capability sheet at install, a per-call timeout, an
 > audit log and safe mode (`app/plugins.py`, `docs/PLUGINS.md`). Commands reach
-> the palette. Declarative UI contributions and a plugin index are still to
-> come; `net`/`fs` declarations are shown, not enforced.
+> the palette, and plugins can contribute **declarative panels** to the Plugins
+> page or Today — rows of labelled commands that the host renders, capped in
+> size and validated against the plugin's declared commands. Still to come: a
+> richer UI schema and a plugin index; `net`/`fs` declarations are shown, not
+> enforced.
 
 **Three tiers, by power and risk**
 

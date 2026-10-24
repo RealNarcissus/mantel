@@ -278,6 +278,8 @@ class Window(Adw.ApplicationWindow):
                 on_focus_done=self._on_focus_done,
                 on_open_settings=lambda: self._go("settings"),
                 on_plan_export=self._on_plan_exported,
+                panels_provider=self._today_panels,
+                on_run_panel=self._run_plugin_panel,
                 engine_name=self.engine.name,
                 model_label=self._current_model_label())
             self._pages.add_named(self._own_scroller(self.today_page), "today")
@@ -432,6 +434,24 @@ class Window(Adw.ApplicationWindow):
     def _knowledge_changed(self) -> None:
         """Index changed: the next turn sees the new notes, nothing to refresh."""
         self._refresh_settings()
+
+    def _today_panels(self) -> list:
+        from app import plugins as plugins_mod  # noqa: PLC0415
+
+        return plugins_mod.panels("today")
+
+    def _run_plugin_panel(self, plugin, command_id: str) -> None:
+        """Run a panel row: same path as a palette command."""
+        from app import plugins as plugins_mod  # noqa: PLC0415
+
+        ok, result = plugins_mod.run_command(plugin, command_id,
+                                             plugins_mod.context(plugin))
+        if not ok:
+            self._notify(f"{plugin.manifest.name} failed", str(result)[:160])
+            return
+        message = result.get("message") if isinstance(result, dict) else result
+        self._notify(plugin.manifest.name, str(message or "Done.")[:160])
+        self._refresh_today()
 
     def _on_plan_exported(self, path: str) -> None:
         self._notify("Plan exported", f"Saved to {path}")
