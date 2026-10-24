@@ -8,6 +8,9 @@ conversations that outlive the process.
 
 > Unofficial and unaffiliated with any model vendor. The shell follows a
 > measured design language; see [Design credit](#design-credit).
+>
+> Where the product goes next — a day-planner agent with auditable memory and a
+> plugin system — is in [docs/VISION.md](docs/VISION.md).
 
 ## Why this exists
 
@@ -130,6 +133,7 @@ supply your own copies: [assets/README.md](assets/README.md).
 └──────────────────────────────┘          └─────────────────────────────┘
 ```
 
+- [docs/VISION.md](docs/VISION.md) — the product thesis and feature plan.
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — modules, data flow, decisions.
 - [docs/DESIGN.md](docs/DESIGN.md) — the design system, measured.
 - [docs/plan/pi-engine.md](docs/plan/pi-engine.md) — the migration to Pi as the
