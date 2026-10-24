@@ -52,6 +52,7 @@ class SchedulePage(Gtk.Box):
     def __init__(self, on_new: Callable[[], None] | None = None,
                  on_run_now: Callable[[object], None] | None = None,
                  on_changed: Callable[[], None] | None = None,
+                 on_open_thread: Callable[[str], None] | None = None,
                  workspace: str = "") -> None:
         super().__init__(orientation=Gtk.Orientation.VERTICAL, spacing=0)
         self.add_css_class("content")
@@ -189,11 +190,23 @@ class SchedulePage(Gtk.Box):
             last = schedule.runs[-1]
             run_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
             run_box.add_css_class("work-panel")
+            head_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL,
+                               spacing=8)
             line = Gtk.Label(
                 label=f"Last run {_when(last.started)} · {last.status.lower()}",
                 xalign=0)
             line.add_css_class("work-item")
-            run_box.append(line)
+            line.set_hexpand(True)
+            head_row.append(line)
+            if last.conversation_id:
+                open_thread = Gtk.Button(label="Open thread")
+                open_thread.add_css_class("chip-grade")
+                open_thread.connect(
+                    "clicked",
+                    lambda _b, cid=last.conversation_id:
+                    self._on_open_thread(cid))
+                head_row.append(open_thread)
+            run_box.append(head_row)
             if last.text:
                 preview = Gtk.Label(label=last.text.replace("\n", " ")[:220],
                                     xalign=0)

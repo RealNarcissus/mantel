@@ -23,6 +23,7 @@ from gi.repository import GLib, GObject  # noqa: E402
 from app import engine as engine_mod
 from app import schedules as store
 from app import session as session_mod
+from app.store import Store
 
 #: How often the timer looks for work.
 TICK_SECONDS = 30
@@ -38,14 +39,16 @@ class Scheduler(GObject.Object):
         "failed": (GObject.SignalFlags.RUN_FIRST, None, (object, str)),
     }
 
-    def __init__(self, engine: engine_mod.Engine,
-                 on_notify=None):
+    def __init__(self, engine: engine_mod.Engine, on_notify=None,
+                 store: Store | None = None):
         super().__init__()
         self.engine = engine
         self.on_notify = on_notify
+        self.store = store
         self._timer_id = 0
         self._running = False
         self._turn = None
+        self._thread = None
 
     # -- lifecycle ----------------------------------------------------------
     def start(self) -> None:
@@ -62,6 +65,7 @@ class Scheduler(GObject.Object):
         if self._turn is not None:
             self._turn.cancel()
             self._turn = None
+        self._thread = None
 
     @property
     def running(self) -> bool:
@@ -84,6 +88,7 @@ class Scheduler(GObject.Object):
             return
         self._running = True
         started = time.time()
+        self._thread = self._open_thread(schedule)
         session = session_mod.Session(
             self.engine, mode=schedule.mode, approval=schedule.approval,
             workspace=schedule.workspace)
@@ -98,6 +103,40 @@ class Scheduler(GObject.Object):
         self._turn.connect("failed",
                            lambda _t, m: self._fail(schedule, started, m))
 
+    # -- the thread --------------------------------------------------------
+    def _open_thread(self, schedule: store.Schedule):
+        """A conversation per run, so a scheduled result reads like any turn."""
+        if self.store is None:
+            return None
+        try:
+            conv = self.store.new(cwd=schedule.workspace or "")
+            conv.title = (f"{schedule.title} · "
+                          f"{time.strftime('%d %b %H:%M')}")
+            conv.add("user", schedule.prompt)
+            conv.begin_turn(schedule.prompt)
+            self.store.save(conv)
+            return conv
+        except Exception:  # noqa: BLE001 - a thread is a bonus, not the run
+            return None
+
+    def _close_thread(self, text: str, error: str = "") -> str:
+        """Finish the run's conversation; returns its id (or "")."""
+        conv = self._thread
+        self._thread = None
+        if conv is None:
+            return ""
+        try:
+            if error:
+                # keep any partial answer, but the thread must show it failed
+                conv.add("assistant", text or error, error=error)
+            else:
+                conv.add("assistant", text)
+            conv.end_turn()
+            self.store.save(conv)
+            return conv.id
+        except Exception:  # noqa: BLE001
+            return ""
+
     def _finish(self, schedule: store.Schedule, started: float,
                 result: dict) -> None:
         self._running = False
@@ -105,11 +144,13 @@ class Scheduler(GObject.Object):
         status = str((result or {}).get("status") or "")
         text = str((result or {}).get("text") or "")
         error = str((result or {}).get("error") or "")
+        thread_id = self._close_thread(text, error)
         run = store.Run(
             started=started, finished=time.time(),
             status=status or ("SUCCESS" if not error else "ERROR"),
             text=text[:2000], error=error[:500],
-            conversation_id=str((result or {}).get("conversation_id") or ""),
+            conversation_id=thread_id or str(
+                (result or {}).get("conversation_id") or ""),
         )
         store.record_run(schedule.id, run)
         if error or (status and status != "SUCCESS"):
@@ -121,8 +162,10 @@ class Scheduler(GObject.Object):
               message: str) -> None:
         self._running = False
         self._turn = None
+        thread_id = self._close_thread("", str(message))
         run = store.Run(started=started, finished=time.time(),
-                        status="ERROR", error=str(message)[:500])
+                        status="ERROR", error=str(message)[:500],
+                        conversation_id=thread_id)
         store.record_run(schedule.id, run)
         self.emit("failed", schedule, str(message))
 

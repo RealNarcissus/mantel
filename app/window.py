@@ -215,7 +215,7 @@ class Window(Adw.ApplicationWindow):
         self.reminders.connect("due", self._on_reminder)
         self.reminders.start()
 
-        self.scheduler = Scheduler(engine)
+        self.scheduler = Scheduler(engine, store=self.store)
         self.scheduler.connect("ran", self._on_schedule_ran)
         self.scheduler.connect("failed", self._on_schedule_failed)
         self.scheduler.start()
@@ -317,6 +317,7 @@ class Window(Adw.ApplicationWindow):
             self.schedule = SchedulePage(
                 on_run_now=self._run_schedule,
                 on_changed=self._refresh_schedules,
+                on_open_thread=self.open_chat,
                 workspace=self.workspace)
             self._pages.add_named(self._own_scroller(self.schedule), "schedule")
         except Exception:  # noqa: BLE001
@@ -1320,10 +1321,13 @@ END:VCALENDAR
             schedule.title,
             (run.text or "Finished.").replace("\n", " ")[:120])
         self._refresh_schedules()
+        self._refresh_sidebar()
+        self._refresh_today()
 
     def _on_schedule_failed(self, _scheduler, schedule, message) -> None:
         self._notify(f"{schedule.title} failed", message[:120])
         self._refresh_schedules()
+        self._refresh_sidebar()
 
     def _notify(self, title: str, body: str) -> None:
         """Raise a desktop notification."""

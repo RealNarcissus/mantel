@@ -1,6 +1,6 @@
 # Plan: Pi as the first engine
 
-**Status:** M0–M4 complete; M5/M6 remaining
+**Status:** M0–M5 complete; M6 (Gemini parity, legacy deletion) in progress
 **Goal:** replace the legacy vendor engine with **Pi** (`pi --mode rpc`) as the
 default engine, without changing the shell, and then adopt **Pi Durable** for
 conversations and tasks.
@@ -199,10 +199,22 @@ tasks, installed the example plugin and attempted demo calendar/notes setup,
 while the memory-capture block was shadowed. Removed, and the test now asserts
 `submit()` contains no demo seeding.
 
-**M5 — schedules become durable tasks (3–4 days)**
-Evaluate Pi Durable's background tasks for scheduled prompts (including the
-"app closed" question: a small daemon, or documented as app-open-only).
-*Done when:* a schedule's run is visible as a task with its own transcript.
+**M5 — schedules become durable tasks (done, app-open-only)**
+Rather than depend on experimental Pi Durable for background execution, a run
+now creates a **conversation of its own**: titled after the schedule, with the
+schedule's prompt as the user turn and the result (or the error) as the
+assistant turn, and the run's `conversation_id` pointing at it. The Schedule
+page offers *Open thread* on the last run, and the thread appears in the rail
+like any other.
+
+The "app closed" question is documented rather than hidden: schedules fire
+**only while Mantel is open**; a slot missed while it was closed fires once on
+the next start, and a run in flight when the app dies is recovered by the same
+interrupted-turn mechanism as a chat turn (`pending_prompt` → *Continue*).
+
+*Verified:* `tests/test_schedule_threads.py` drives the real scheduler with a
+fake engine and asserts the thread's existence, roles, title, content and
+reopening — for both a successful and a failing run.
 
 **M6 — Gemini engine, legacy deleted (in progress)**
 - *Done:* `app/engines/gemini_api.py` speaks the public REST streaming API with
