@@ -1,30 +1,37 @@
 # Architecture
 
-The client is a GTK4 application with one job: drive an engine that already
-knows how to be an agent. Everything else — approvals, history, tools,
-schedules — is the client exposing a surface the engine already has.
+The client is a GTK4 application with one job: drive an agent engine and put a
+native Linux surface on it. Everything above the engine adapter — approvals,
+history, tools, schedules — is engine-independent by design.
 
 ## The two processes
 
 ```
- Python / GTK4                                   Go engine (`agy`)
- ─────────────                                   ─────────────────
+ Python / GTK4                          engine adapter (one module per engine)
+ ─────────────                          ─────────────────────────────────────
  app/main.py       Adw.Application
  app/window.py     rail · top bar · stack · work panel · approvals
- app/engine.py     ──── spawn ─────────────────►  --print <prompt>
-                        ├── stdin/args           --output-format stream-json
-                        │                        --model, --mode, flags
-                        └── NDJSON stdout ◄────  init | step_update | result
+ app/engine.py     ──── facade ───────► engines/pi_rpc.py      (default target)
+                        ├── spawn         pi --mode rpc   JSONL in / events out
+                        │                 extension_ui_request / response
+                        └── events   ─── engines/gemini_sdk.py   (planned)
+                                      engines/legacy_agy.py     (v0.1 only)
  app/session.py    modes, approval state, tool records, work items
 ```
 
-One engine process per turn. The client asks for one turn, renders the stream
-as it arrives, and when the turn ends it records usage, the conversation id
-and any refusals.
+One engine process per conversation. The client asks for a turn, renders the
+stream as it arrives, and records usage when the turn settles. Approvals are a
+round trip inside that stream, not a post-hoc report.
 
-`app/engine.py` is the only module that knows about processes. It parses
-defensively — unknown event types are ignored rather than fatal — because the
-stream format belongs to someone else and may drift.
+`app/engines/` is the only place that knows about processes and protocols.
+Adapters parse defensively — unknown event types are ignored rather than fatal,
+because the stream format belongs to someone else and may drift.
+
+Nothing above `app/engines/` imports an engine-specific module, names an
+engine-specific path, or reads an engine-specific environment variable. That rule is what the milestone M0
+contract test (`tests/test_engine_contract.py`, not written yet) will assert
+against every adapter — it is the intended definition of "an engine is
+supported". See [plan/pi-engine.md](plan/pi-engine.md).
 
 ## Data flow of one turn
 
@@ -33,11 +40,13 @@ stream format belongs to someone else and may drift.
 2. **Window** appends the user message, opens an assistant bubble and starts
    the turn. If the engine could not resume this conversation last time, the
    recent turns are replayed inline first (`_history_prefix`).
-3. **Engine** streams `step_update` events. Deltas go to the bubble; tool
+3. **Engine** streams deltas and tool events. Deltas go to the bubble; tool
    calls go to `session.record_tool`, which feeds the work panel.
-4. **Result** closes the bubble with duration and token usage, and records
-   `denied_actions`.
-5. **Approvals**: each refusal becomes a card. Granting calls
+4. **Settle** closes the bubble with duration and token usage.
+5. **Approvals**: with the Pi adapter the engine asks *before* running a tool
+   (`extension_ui_request`), the card answers it (`extension_ui_response`), and
+   a deny means the tool never executes. With the legacy adapter, refusals are
+   reported afterwards, so granting calls
    `permissions.allow(...)`, which writes a real rule into the engine's
    `config.json`, then the request is replayed.
 6. **Changes**: after every turn `changes.collect()` asks git what changed and
@@ -52,7 +61,8 @@ stream format belongs to someone else and may drift.
 | `sidebar.py`, `topbar.py` | The 304 px rail and the 100 px bar |
 | `composer.py` | Prompt entry and the mode/model/effort/approval controls |
 | `chat_view.py` | Transcript, assistant bubbles, `WorkPanel`, `ChangesPanel` |
-| `engine.py` | Spawns the engine, parses NDJSON, emits turn signals |
+| `engine.py` | Facade: selects an adapter, re-exports turn signals |
+| `engines/` | One adapter per engine (Pi RPC, Gemini SDK, legacy); the only code that spawns processes |
 | `session.py` | Modes, approval ladder state, tool records, work items |
 | `permissions.py` | Reads/writes the engine's permission config and trusted folders |
 | `approval.py` | Approval cards and the anchored stack |
@@ -69,10 +79,12 @@ stream format belongs to someone else and may drift.
 
 ## Decisions worth knowing
 
-**The engine is the brain; the client is the body.** Anything the UI appears
-to do — permissions, schedules applied to real prompts, skill installation —
-terminates in the engine's own files and commands, so `agy mcp list` and the
-Connectors page can never disagree.
+**The engine is the brain; the client is the body.** Mantel does not own the
+model, the tool loop or the provider credentials — and that is deliberate:
+model access should follow *your* provider entitlement rather than which
+desktop client you happen to run. Anything the UI appears to do — permissions,
+schedules applied to real prompts, skill installation — terminates in the
+engine's own stores, so the CLI and the UI can never disagree.
 
 **Software rendering for verification.** Development happened on a machine
 with no capturable compositor and no GPU. The UI is therefore verified by
