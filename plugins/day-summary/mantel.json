@@ -1,0 +1,23 @@
+{
+  "id": "com.mantel.day-summary",
+  "name": "Day summary",
+  "version": "1.0.0",
+  "apiVersion": 1,
+  "description": "Summarises the day from the tasks the client passes in. No file or network access.",
+  "author": "Mantel",
+  "entry": ["python3", "main.py"],
+  "permissions": {
+    "fs": "none",
+    "net": [],
+    "memory": "none",
+    "exec": false,
+    "ui": []
+  },
+  "commands": [
+    {
+      "id": "summarise",
+      "title": "Summarise my day",
+      "description": "A short read on what is due, what is late and what is next."
+    }
+  ]
+}
