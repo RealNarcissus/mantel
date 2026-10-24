@@ -60,6 +60,11 @@ a native Linux surface — without owning the intelligence itself.
   the invoice tomorrow at 5pm” becomes a dated task — with projects, repeats,
   an overdue state and time-based notifications while the app is open. The
   agent writes to the same store.
+- **Plugins**: a folder with a `mantel.json` and a program adds commands to the
+  palette. They run out of process with a per-call timeout, state what they may
+  touch, are never executed on install, and every action lands in an audit log.
+  [docs/PLUGINS.md](docs/PLUGINS.md) has the contract; `plugins/day-summary` is a
+  working example.
 - **Memory you can inspect**: facts and preferences the agent knows about you,
   gathered from what you state plainly or added by hand, injected into each
   turn under a token budget — and listed with their source, age and expiry so
@@ -86,6 +91,7 @@ a native Linux surface — without owning the intelligence itself.
 | ![Create](docs/screenshots/create.png) | ![Scheduled](docs/screenshots/schedule.png) |
 | ![Memory](docs/screenshots/memory.png) | ![Settings](docs/screenshots/settings.png) |
 | ![Overview dashboard](docs/screenshots/home.png) | ![Command palette](docs/screenshots/palette.png) |
+| ![Plugins](docs/screenshots/plugins.png) | ![Tasks](docs/screenshots/tasks.png) |
 
 Every image is an offscreen render of the real widget tree, produced by
 `tools/make_screenshots.py`. They use demo data, so no real account or path
@@ -162,6 +168,7 @@ supply your own copies: [assets/README.md](assets/README.md).
 └──────────────────────────────┘          └─────────────────────────────┘
 ```
 
+- [docs/PLUGINS.md](docs/PLUGINS.md) — the plugin contract and security model.
 - [docs/VISION.md](docs/VISION.md) — the product thesis and feature plan.
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — modules, data flow, decisions.
 - [docs/DESIGN.md](docs/DESIGN.md) — the design system, measured.

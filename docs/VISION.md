@@ -253,6 +253,12 @@ Raycast's answer is that extensions are open source and inspectable
 ([Raycast security](https://developers.raycast.com/information/security)). Ours
 is capability tiers plus process isolation.
 
+> **v1 shipped:** extensions run out of process over JSON-RPC, with a
+> validated manifest, a capability sheet at install, a per-call timeout, an
+> audit log and safe mode (`app/plugins.py`, `docs/PLUGINS.md`). Commands reach
+> the palette. Declarative UI contributions and a plugin index are still to
+> come; `net`/`fs` declarations are shown, not enforced.
+
 **Three tiers, by power and risk**
 
 | Tier | What it is | Runs where | Can do |

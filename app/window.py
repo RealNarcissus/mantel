@@ -36,6 +36,7 @@ PAGES = (
     ("create", "Create", "add_image_spark", engine_mod.IMAGES),
     ("schedule", "Schedule", "schedule", engine_mod.TOOLS),
     ("memory", "Memory", "lightbulb", engine_mod.TOOLS),
+    ("plugins", "Plugins", "tune", engine_mod.TOOLS),
     ("connectors", "Connectors", "extension", engine_mod.CONNECTORS),
     ("skills", "Skills", "notes_spark", engine_mod.SKILLS),
 )
@@ -195,7 +196,8 @@ class Window(Adw.ApplicationWindow):
         self.palette = palette_mod.Palette(
             on_run=self._run_palette_action,
             on_close=self._close_palette,
-            pages=[page[0] for page in self._pages_for_engine])
+            pages=[page[0] for page in self._pages_for_engine],
+            extras_provider=self._plugin_palette_actions)
         self.palette.set_visible(True)
         self._overlay.add_overlay(self.palette)
         self._install_palette_shortcut()
@@ -267,6 +269,13 @@ class Window(Adw.ApplicationWindow):
             self._pages.add_named(self._own_scroller(self.today_page), "today")
         except Exception:  # noqa: BLE001
             self.today_page = None
+        try:
+            from app.pages.plugins import PluginsPage  # noqa: PLC0415
+            self.plugins_page = PluginsPage(on_changed=self._refresh_plugins)
+            self._pages.add_named(self._own_scroller(self.plugins_page),
+                                  "plugins")
+        except Exception:  # noqa: BLE001
+            self.plugins_page = None
         try:
             from app.pages.memory import MemoryPage  # noqa: PLC0415
             self.memory = MemoryPage(
@@ -408,6 +417,41 @@ class Window(Adw.ApplicationWindow):
             page.refresh()
         self._refresh_today()
 
+    def _refresh_plugins(self) -> None:
+        page = getattr(self, "plugins_page", None)
+        if page is not None:
+            page.refresh()
+
+    def _plugin_palette_actions(self) -> list:
+        """Commands contributed by enabled plugins, for the palette."""
+        from app import palette as palette_mod  # noqa: PLC0415
+        from app import plugins as plugins_mod  # noqa: PLC0415
+
+        actions = []
+        for plugin, command in plugins_mod.commands():
+            actions.append(palette_mod.Action(
+                "plugin", command["title"],
+                f"{plugin.manifest.name} · plugin",
+                f"{plugin.manifest.id}|{command['id']}"))
+        return actions
+
+    def _run_plugin_command(self, payload: str) -> None:
+        from app import plugins as plugins_mod  # noqa: PLC0415
+
+        plugin_id, _, command_id = payload.partition("|")
+        plugin = plugins_mod.find(plugin_id)
+        if plugin is None:
+            return
+        ok, result = plugins_mod.run_command(plugin, command_id, {
+            "date": __import__("time").strftime("%A %d %B"),
+        })
+        if not ok:
+            self._notify(f"{plugin.manifest.name} failed", str(result)[:160])
+            return
+        message = result.get("message") if isinstance(result, dict) else result
+        self._notify(plugin.manifest.name, str(message or "Done.")[:160])
+        self._refresh_plugins()
+
     def _refresh_today(self) -> None:
         page = getattr(self, "today_page", None)
         if page is not None:
@@ -536,6 +580,21 @@ I also added a regression test for the missing check.
         message = self.chat.begin_assistant(model="Gemini 3.8 Flash (High)")
         message.set_text(self.DEMO_TRANSCRIPT)
         message.finish(duration=12.4, usage={"total_tokens": 2185})
+
+        try:
+            from pathlib import Path as _P  # noqa: PLC0415
+
+            from app import plugins as plugins_mod  # noqa: PLC0415
+
+            reference = (_P(__file__).resolve().parent.parent
+                         / "plugins" / "day-summary")
+            if reference.is_dir():
+                plugins_mod.install(reference)
+            page = getattr(self, "plugins_page", None)
+            if page is not None:
+                page.refresh()
+        except Exception:  # noqa: BLE001
+            pass
 
         try:
             from app import todos as todos_mod  # noqa: PLC0415
@@ -870,6 +929,21 @@ I also added a regression test for the missing check.
         self.store.save(conv)
         # Learn only what was stated plainly; the page shows exactly what was
         # kept, and the user can delete it.
+        try:
+            from pathlib import Path as _P  # noqa: PLC0415
+
+            from app import plugins as plugins_mod  # noqa: PLC0415
+
+            reference = (_P(__file__).resolve().parent.parent
+                         / "plugins" / "day-summary")
+            if reference.is_dir():
+                plugins_mod.install(reference)
+            page = getattr(self, "plugins_page", None)
+            if page is not None:
+                page.refresh()
+        except Exception:  # noqa: BLE001
+            pass
+
         try:
             from app import todos as todos_mod  # noqa: PLC0415
 
@@ -1419,6 +1493,9 @@ I also added a regression test for the missing check.
             if task is not None:
                 self._notify("Reminder set", task.title)
                 self._refresh_tasks()
+            return
+        if kind == "plugin":
+            self._run_plugin_command(payload)
             return
         if kind == "note":
             from app import memory as memory_mod  # noqa: PLC0415

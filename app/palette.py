@@ -19,6 +19,7 @@ from dataclasses import dataclass
 import gi
 
 gi.require_version("Gtk", "4.0")
+gi.require_version("Gdk", "4.0")
 from gi.repository import Gdk, Gtk  # noqa: E402
 
 from app import memory as memory_store
@@ -66,9 +67,19 @@ def _strip_reminder(query: str) -> str:
 
 
 def actions_for(query: str, *, pages: list[str] | None = None,
+                extras: list[Action] | None = None,
                 limit: int = 8) -> list[Action]:
-    """Alias used by the widget and the CLI: the public entry point."""
-    return interpret(query, pages=pages, limit=limit)
+    """The widget's entry point: built-in actions plus contributed ones."""
+    actions = interpret(query, pages=pages, limit=limit)
+    if not extras:
+        return actions
+    text = (query or "").strip().lower()
+    matched = [action for action in extras
+               if not text or text in action.label.lower()]
+    if not matched:
+        return actions
+    # contributed commands sit after the built-ins, never instead of them
+    return (actions + matched)[:max(limit, len(matched))]
 
 
 @dataclass
@@ -188,7 +199,8 @@ def interpret(query: str, *, pages: list[str] | None = None,
 class Palette(Gtk.Revealer):
     """An overlay at the top of the window: type, choose, done."""
 
-    def __init__(self, on_run, on_close=None, pages=None) -> None:
+    def __init__(self, on_run, on_close=None, pages=None,
+                 extras_provider=None) -> None:
         super().__init__()
         self.set_transition_type(Gtk.RevealerTransitionType.CROSSFADE)
         self.set_transition_duration(120)
@@ -199,6 +211,7 @@ class Palette(Gtk.Revealer):
         self._on_run = on_run
         self._on_close = on_close or (lambda: None)
         self._pages = pages or []
+        self._extras_provider = extras_provider
         self._actions: list[Action] = []
         self._selected = 0
 
@@ -254,7 +267,13 @@ class Palette(Gtk.Revealer):
         self._refresh(entry.get_text())
 
     def _refresh(self, query: str) -> None:
-        self._actions = actions_for(query, pages=self._pages)
+        extras = []
+        if self._extras_provider:
+            try:
+                extras = list(self._extras_provider())
+            except Exception:  # noqa: BLE001 - a bad provider must not break it
+                extras = []
+        self._actions = actions_for(query, pages=self._pages, extras=extras)
         self._selected = 0
         while (child := self._list.get_first_child()) is not None:
             self._list.remove(child)
