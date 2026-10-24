@@ -13,14 +13,21 @@ import gi
 gi.require_version("Gtk", "4.0")
 from gi.repository import Gtk  # noqa: E402
 
-from app import engine as engine_mod
 from app import calendar as calendar_store
 from app import knowledge as knowledge_store
 from app import nudges as nudges_store
 from app import session as session_mod
-from app import theme  # noqa: E402
-from app.cards import (body, card, divider, eyebrow, hspacer, icon_square,
-                       pill_button, section_title, segmented, spacer)
+from app.cards import (
+    body,
+    card,
+    divider,
+    hspacer,
+    icon_square,
+    pill_button,
+    section_title,
+    segmented,
+    spacer,
+)
 
 
 def _row(icon_name: str, title: str, detail: str,
@@ -465,12 +472,12 @@ class SettingsPage(Gtk.Box):
                           self._workspace or "not set", choose))
         inner.append(divider())
 
-        trusted = permissions.trusted_folders()
-        count = Gtk.Label(label=f"{len(trusted)} trusted")
-        count.add_css_class("chip-grade")
-        detail = (", ".join(trusted[:2]) + ("…" if len(trusted) > 2 else "")
-                  if trusted else "No folders trusted yet.")
-        inner.append(_row("check_circle", "Trusted folders", detail, count))
+        note = Gtk.Label(label="asked on change")
+        note.add_css_class("chip-grade")
+        inner.append(_row(
+            "check_circle", "Folder trust",
+            "You are asked when you choose a folder, and the engine's approval "
+            "gate still checks every action.", note))
         panel.append(inner)
         return panel
 

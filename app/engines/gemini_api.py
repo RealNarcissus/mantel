@@ -36,10 +36,14 @@ from pathlib import Path
 import gi
 
 gi.require_version("GLib", "2.0")
-from gi.repository import GLib  # noqa: E402
 
 from app.engines.base import (  # noqa: E402
-    APPROVALS, CHAT, DEFAULT_TIMEOUT, TOOLS, EngineAdapter, Turn,
+    APPROVALS,
+    CHAT,
+    DEFAULT_TIMEOUT,
+    TOOLS,
+    EngineAdapter,
+    Turn,
 )
 
 #: Where the key comes from. `GEMINI_API_KEY` is the name the docs use.
@@ -205,7 +209,8 @@ class GeminiAdapter(EngineAdapter):
             return self._models
         out: list[tuple[str, str]] = []
         try:
-            url = f"{self.base}/v1beta/models?{urllib.parse.urlencode({'key': self.key})}"
+            query = urllib.parse.urlencode({"key": self.key})
+            url = f"{self.base}/v1beta/models?{query}"
             with urllib.request.urlopen(url, timeout=20) as response:
                 data = json.loads(response.read().decode("utf-8", "replace"))
             for model in data.get("models", []):
@@ -308,7 +313,6 @@ class GeminiAdapter(EngineAdapter):
     @staticmethod
     def _calls(record: dict) -> list[dict]:
         out: list[dict] = []
-        finish = ""
         for candidate in record.get("candidates") or []:
             if not isinstance(candidate, dict):
                 continue

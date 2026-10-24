@@ -8,9 +8,9 @@ a study of the Gemini desktop app; the design is @UiRahMan92's.
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass
 import threading
 import time
+from dataclasses import dataclass
 
 import gi
 
@@ -19,12 +19,14 @@ gi.require_version("Adw", "1")
 from gi.repository import Adw, Gio, GLib, Gtk  # noqa: E402
 
 from app import approval as approval_mod
-from app import chat_view, composer, engine as engine_mod
+from app import chat_view, composer, theme
+from app import engine as engine_mod
 from app import palette as palette_mod
 from app import session as session_mod
 from app import sidebar as sidebar_mod
-from app import theme, topbar as topbar_mod
+from app import topbar as topbar_mod
 from app.store import Store
+
 
 #: The surfaces in the rail, in the order the desktop app uses.
 #: (name, rail label, icon, capability the engine must provide)
@@ -840,19 +842,12 @@ END:VCALENDAR
              ("Take a screenshot", self._attach_screenshot),
              ("Add a folder…", self.pick_workspace),
              ("Skills", lambda: self._go("skills")),
-             ("Schedules", lambda: self._go("schedule")),
-             ("Remote control", lambda: self._go("settings"))],
+             ("Schedules", lambda: self._go("schedule"))],
             "Add files and tools", self.composer.tools_btn)
 
     def _generate_image(self, instruction: str) -> None:
         """Run a creation prompt in Task mode and show the result."""
         self._go("chat")
-        self._refresh_tasks()
-        self._refresh_memory()
-        self._refresh_today()
-        self.session.mode = session_mod.MODE_TASK
-        if shown_page:
-            self._go(shown_page)
         self.session.mode = session_mod.MODE_TASK
         buf = self.composer.view.get_buffer()
         buf.set_text(instruction)
