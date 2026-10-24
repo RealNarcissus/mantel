@@ -126,8 +126,10 @@ is the chassis. Here is what hangs on it.
 ### P0 — the minimum that is genuinely useful daily
 
 > **Shipped so far:** the task store with natural-language dates, repeats,
-> projects and reminders (`app/todos.py`), the Tasks page, the reminder runner,
-> and Memory v1. Today's merged agenda, capture-from-anywhere and the command
+> projects and reminders (`app/todos.py`); the Tasks page; the reminder runner;
+> Memory v1; and **Today** as the home screen, merging today's tasks, the week
+> ahead, undated work, remembered facts, the agent card and a focus timer
+> (`app/pages/today.py`, `app/focus.py`). Capture-from-anywhere and the command
 > palette are still to come.
 
 | # | Feature | Why it earns the open | Acceptance |

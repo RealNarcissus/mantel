@@ -29,6 +29,7 @@ from app.store import Store
 #: The surfaces in the rail, in the order the desktop app uses.
 #: (name, rail label, icon, capability the engine must provide)
 PAGES = (
+    ("today", "Today", "light_mode", engine_mod.TOOLS),
     ("chat", "Chat", "chat", engine_mod.TOOLS),
     ("tasks", "Tasks", "checklist", engine_mod.TOOLS),
     ("create", "Create", "add_image_spark", engine_mod.IMAGES),
@@ -240,6 +241,19 @@ class Window(Adw.ApplicationWindow):
             except Exception:  # noqa: BLE001
                 self.skills = None
         try:
+            from app.pages.today import TodayPage  # noqa: PLC0415
+            self.today_page = TodayPage(
+                on_toggle_task=lambda _id: self._refresh_today(),
+                on_add_task=self._add_task_from_today,
+                on_open_tasks=lambda: self._go("tasks"),
+                on_open_chat=self.new_chat,
+                on_focus_done=self._on_focus_done,
+                engine_name=self.engine.name,
+                model_label=self._current_model_label())
+            self._pages.add_named(self._own_scroller(self.today_page), "today")
+        except Exception:  # noqa: BLE001
+            self.today_page = None
+        try:
             from app.pages.memory import MemoryPage  # noqa: PLC0415
             self.memory = MemoryPage(
                 on_changed=self._refresh_memory,
@@ -378,11 +392,30 @@ class Window(Adw.ApplicationWindow):
         page = getattr(self, "tasks", None)
         if page is not None:
             page.refresh()
+        self._refresh_today()
+
+    def _refresh_today(self) -> None:
+        page = getattr(self, "today_page", None)
+        if page is not None:
+            page.refresh()
+
+    def _add_task_from_today(self, text: str) -> None:
+        from app import todos  # noqa: PLC0415
+
+        if todos.add(text) is not None:
+            self._refresh_tasks()
+            self._refresh_sidebar()
+
+    def _on_focus_done(self, *_args) -> None:
+        """A focus session ended: say so once, without stealing focus."""
+        self._notify("Focus session complete",
+                     "Time for a break — or start another.")
 
     def _refresh_memory(self) -> None:
         page = getattr(self, "memory", None)
         if page is not None:
             page.refresh()
+        self._refresh_today()
 
     def _refresh_settings(self) -> None:
         """Rebuild the Settings page after a change made on it."""
@@ -530,6 +563,9 @@ I also added a regression test for the missing check.
         self._update_work()
         self._update_changes()
 
+        self._refresh_tasks()
+        self._refresh_memory()
+        self._refresh_today()
         self.session.mode = session_mod.MODE_TASK
         if shown_page:
             self._go(shown_page)
@@ -627,6 +663,9 @@ I also added a regression test for the missing check.
     def _generate_image(self, instruction: str) -> None:
         """Run a creation prompt in Task mode and show the result."""
         self._go("chat")
+        self._refresh_tasks()
+        self._refresh_memory()
+        self._refresh_today()
         self.session.mode = session_mod.MODE_TASK
         if shown_page:
             self._go(shown_page)
@@ -1013,6 +1052,7 @@ I also added a regression test for the missing check.
         self.store.save(self.conversation)
         self._update_work()
         self._refresh_sidebar()
+        self._refresh_today()
         gallery = getattr(self, "create", None)
         if gallery is not None:
             gallery.refresh()
@@ -1062,6 +1102,7 @@ I also added a regression test for the missing check.
         body = task.title + (" · " + due if due else "")
         self._notify("Reminder", body)
         self._refresh_tasks()
+        self._refresh_today()
 
     # -- schedules ----------------------------------------------------------
     def _run_schedule(self, schedule) -> None:
@@ -1363,6 +1404,9 @@ I also added a regression test for the missing check.
         reminders = getattr(self, "reminders", None)
         if reminders is not None:
             reminders.stop()
+        today = getattr(self, "today_page", None)
+        if today is not None:
+            today.stop()
         return False
 
     def _show_options(self) -> None:

@@ -29,6 +29,16 @@ a native Linux surface — without owning the intelligence itself.
 
 ## What it does
 
+**A day, not a dashboard**
+
+- **Today** is the home screen: what is due (overdue first), what is next this
+  week, what the agent remembers, and the agent itself — with a quick-add box
+  that turns "pay the invoice tomorrow at 5pm" into a dated task.
+- **Focus timer** lives on that screen, because a timer on its own page is a
+  timer nobody starts.
+- The older overview dashboard is still there as *Goals* while the two
+  surfaces merge.
+
 **Agent surface, not a chat box**
 
 - **Approvals with a real ladder**: allow once / allow for this session /
@@ -70,6 +80,7 @@ a native Linux surface — without owning the intelligence itself.
 | ![Task mode](docs/screenshots/chat.png) | ![Tasks](docs/screenshots/tasks.png) |
 | ![Create](docs/screenshots/create.png) | ![Scheduled](docs/screenshots/schedule.png) |
 | ![Memory](docs/screenshots/memory.png) | ![Settings](docs/screenshots/settings.png) |
+| ![Overview dashboard](docs/screenshots/home.png) | ![Focus and agent](docs/screenshots/today.png) |
 
 Every image is an offscreen render of the real widget tree, produced by
 `tools/make_screenshots.py`. They use demo data, so no real account or path

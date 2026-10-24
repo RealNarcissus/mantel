@@ -137,10 +137,10 @@ def main(argv: list[str] | None = None) -> int:
                     help="submit this prompt, wait for the turn, then render")
     ap.add_argument("--demo", action="store_true",
                     help="fill the transcript with sample content (UI check)")
-    ap.add_argument("--page", default="home",
+    ap.add_argument("--page", default="today",
                     choices=("home", "chat", "tasks", "schedule",
                              "connectors", "skills", "account",
-                             "settings", "create", "memory"),
+                             "settings", "create", "memory", "today"),
                     help="which page to open on start")
     ap.add_argument("--scheme", default="light",
                     choices=("light", "dark", "system"),
