@@ -28,10 +28,10 @@ Adapters parse defensively — unknown event types are ignored rather than fatal
 because the stream format belongs to someone else and may drift.
 
 Nothing above `app/engines/` imports an engine-specific module, names an
-engine-specific path, or reads an engine-specific environment variable. That rule is what the milestone M0
-contract test (`tests/test_engine_contract.py`, not written yet) will assert
-against every adapter — it is the intended definition of "an engine is
-supported". See [plan/pi-engine.md](plan/pi-engine.md).
+engine-specific path, or reads an engine-specific environment variable. `tests/test_engine_adapter.py` runs the
+same expectations against every adapter — it is the definition of "an engine is
+supported" — and `tests/fixtures/fake_pi.py` keeps that suite runnable with no
+engine, credentials or network. See [plan/pi-engine.md](plan/pi-engine.md).
 
 ## Data flow of one turn
 

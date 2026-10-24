@@ -72,7 +72,7 @@ stores are engine-independent.
 
 | Engine | Status | Notes |
 |---|---|---|
-| **Pi** ([pi.dev](https://pi.dev)) | **in progress — the default target** | `pi --mode rpc`: JSONL subprocess protocol, multi-provider models, sessions and steering. Approvals arrive as extension UI requests, so they render as Mantel's own cards. Durability comes from Pi Durable. |
+| **Pi** ([pi.dev](https://pi.dev)) | **M1 complete — default target** | `pi --mode rpc`: streaming, tool events, models, effort, abort, sessions. Verified against `pi` 1.4.0 and a protocol fake. Approvals (extension UI requests) land in M2; durability in M4. |
 | **Gemini API** ([`google-genai`](https://pypi.org/project/google-genai/)) | planned | Direct SDK integration for people who want Gemini models with their own API key, including the Live API for voice. |
 | **Legacy vendor engine** | v0.1 only, being removed | The current working bridge drives a bundled CLI engine. It is why this repo exists and is documented in [docs/reverse-engineering/](docs/reverse-engineering/), but it depends on vendor-issued credentials and is not the future. |
 

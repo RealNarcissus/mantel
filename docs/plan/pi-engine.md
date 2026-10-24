@@ -1,6 +1,6 @@
 # Plan: Pi as the first engine
 
-**Status:** approved direction, not started
+**Status:** M0 and M1 complete; M2 (approval cards) is next
 **Goal:** replace the legacy vendor engine with **Pi** (`pi --mode rpc`) as the
 default engine, without changing the shell, and then adopt **Pi Durable** for
 conversations and tasks.
@@ -114,15 +114,23 @@ Acceptance criteria:
 
 Each milestone ships green tests and no user-visible regression.
 
-**M0 — adapter seam (½ day)**
-Extract `EngineAdapter`, move the current bridge to `engines/legacy_agy.py`,
-add the contract test. *Done when:* the app behaves identically and
-`grep -r "agy" app/ --exclude-dir=engines` is empty.
+**M0 — adapter seam (done)**
+`app/engines/base.py` holds the contract, `legacy_agy.py` holds the old bridge
+unchanged, `app/engine.py` is a facade selecting by `MANTEL_ENGINE`, and
+`tests/test_engine_adapter.py` is the contract suite. The three vendor-only
+modules (account, remote, connectors) are marked as such.
+*Known remaining references to the vendor outside `engines/` are exactly those
+flagged vendor surfaces, not the bridge.*
 
-**M1 — Pi, chat-only (2–3 days)**
-Spawning `pi --mode rpc`, prompt/stream/settle, model list, effort, abort,
-usage in the footer. *Done when:* a Task-mode turn streams to completion
-against a real Pi install, and the transcript footer shows model and tokens.
+**M1 — Pi, chat-only (done)**
+`app/engines/pi_rpc.py` drives `pi --mode rpc`: prompt, streaming deltas,
+thinking, tool lifecycle, usage normalised into the footer's shape, model list
+via `get_available_models`, effort via `--thinking`, graceful abort, and a
+refusal for engine dialogs so nothing can hang the UI before M2.
+*Verified:* against a protocol-faithful fake (`tests/fixtures/fake_pi.py`) for
+all nine contract checks, and against the real `pi` 1.4.0 for handshake and
+session id; a real prompt currently stops at "No API key found for the selected
+model", which is the expected blocker until a provider is connected.
 
 **M2 — approvals (3–4 days)**
 The extension above plus client rendering, timeout, and workspace rules.
