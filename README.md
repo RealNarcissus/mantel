@@ -38,7 +38,9 @@ a native Linux surface — without owning the intelligence itself.
   planned, which files were touched.
 - A **changes panel** that asks git what actually changed on disk, with a diff
   viewer. The working tree is the source of truth, not the agent's claims.
-- **Steering** and follow-ups while a turn is running.
+- **Steering**: type while a turn is running and the instruction joins it —
+  delivered after the current tool calls, shown as a note rather than a second
+  user turn.
 - Three modes — **Chat**, **Task** and **Research** — with model and reasoning
   effort per conversation.
 
@@ -72,7 +74,7 @@ stores are engine-independent.
 
 | Engine | Status | Notes |
 |---|---|---|
-| **Pi** ([pi.dev](https://pi.dev)) | **M2 complete · M3 in progress — default target** | `pi --mode rpc`: streaming, tool events, models, effort, abort, sessions, and **pre-execution approvals** through the shipped gate extension (`pi-extensions/approvals.ts`). Verified against `pi` 1.4.0 and a protocol fake. Durability lands in M4. |
+| **Pi** ([pi.dev](https://pi.dev)) | **M3 complete — default target** | `pi --mode rpc`: streaming, tool events, models, effort, abort, sessions, and **pre-execution approvals** through the shipped gate extension (`pi-extensions/approvals.ts`). Verified against `pi` 1.4.0 and a protocol fake. Durability lands in M4. |
 | **Gemini API** ([`google-genai`](https://pypi.org/project/google-genai/)) | planned | Direct SDK integration for people who want Gemini models with their own API key, including the Live API for voice. |
 | **Legacy vendor engine** | v0.1 only, being removed | The current working bridge drives a bundled CLI engine. It is why this repo exists and is documented in [docs/reverse-engineering/](docs/reverse-engineering/), but it depends on vendor-issued credentials and is not the future. |
 

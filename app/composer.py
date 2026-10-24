@@ -28,12 +28,15 @@ PLACEHOLDER_RESEARCH = "What should Mantel research?"
 class Composer(Gtk.Box):
     """Text entry plus its controls. Calls back on submit / stop."""
 
-    def __init__(self, on_submit, on_stop=None, on_pick_workspace=None,
+    def __init__(self, on_submit, on_stop=None, on_steer=None,
+                 on_pick_workspace=None,
                  on_pick_model=None, on_pick_approval=None, on_pick_effort=None,
                  on_toggle_mode=None):
         super().__init__(orientation=Gtk.Orientation.VERTICAL, spacing=6)
         self._on_submit = on_submit
         self._on_stop = on_stop
+        self._on_steer = on_steer
+        self._can_steer = False
         self._on_pick_model = on_pick_model
         self._on_pick_approval = on_pick_approval
         self._on_pick_effort = on_pick_effort
@@ -211,10 +214,16 @@ class Composer(Gtk.Box):
         return False
 
     def _activate(self) -> None:
-        if self._streaming:
-            self._do_stop()
-            return
         text = self.text()
+        if self._streaming:
+            # A running turn can take another instruction when the engine
+            # supports steering; otherwise Enter keeps meaning "stop".
+            if text and self._can_steer and self._on_steer:
+                self._on_steer(text)
+                self.clear()
+            else:
+                self._do_stop()
+            return
         if text:
             self._on_submit(text)
 
@@ -250,6 +259,10 @@ class Composer(Gtk.Box):
     def set_workspace(self, path: str) -> None:
         self.workspace_label.set_text(os.path.basename(path.rstrip("/")) or path)
         self.workspace_btn.set_tooltip_text(path)
+
+    def set_steering(self, enabled: bool) -> None:
+        """Whether a running turn accepts another instruction."""
+        self._can_steer = bool(enabled)
 
     def set_streaming(self, streaming: bool) -> None:
         self._streaming = streaming

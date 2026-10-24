@@ -10,6 +10,7 @@ Scenarios are selected by the prompt text:
 
     "hello"     streams "Hello " + "world", runs one bash tool, settles
     "slow"      streams a delta, then waits until aborted
+    "steer"     streams, then waits for a steer and echoes it
     "fail"      rejects the prompt with success:false
     "approve"   asks the client to approve a tool call, then reports the answer
     "crash"     exits mid-turn without settling
@@ -133,6 +134,31 @@ def _run_turn(message: str, session_id: str) -> None:
                                         "contentIndex": 0, "delta": "work"}})
         time.sleep(30)      # until aborted
         send({"type": "agent_settled", "aborted": True})
+        return
+
+    if message == "steer":
+        send({"type": "message_update",
+              "usage": {"totalTokens": 3},
+              "assistantMessageEvent": {"type": "text_delta",
+                                        "contentIndex": 0, "delta": "working"}})
+        while True:
+            line = sys.stdin.readline()
+            if not line:
+                send({"type": "agent_settled", "aborted": True})
+                return
+            try:
+                record = json.loads(line)
+            except ValueError:
+                continue
+            if record.get("type") == "steer" and record.get("message"):
+                respond(record.get("id"), "steer",
+                        {"disposition": "queued"})
+                stream("|steered:" + str(record["message"]))
+                break
+        send({"type": "turn_end", "message": {"role": "assistant",
+                                              "content": []}, "toolResults": []})
+        send({"type": "agent_end", "messages": [], "willRetry": False})
+        send({"type": "agent_settled", "aborted": False})
         return
 
     if message == "approve":

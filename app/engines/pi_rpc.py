@@ -121,6 +121,14 @@ class PiTurn(Turn):
         self._stop_process()
         return False
 
+    def steer(self, text: str) -> bool:
+        """Queue a message into the running turn (Pi delivers it after the
+        current assistant turn's tool calls)."""
+        if self._settled or not str(text).strip():
+            return False
+        self._send({"type": "steer", "message": str(text)})
+        return True
+
     # -- answering a blocked engine ----------------------------------------
     def answer_dialog(self, request_id: str, *, value: str | None = None,
                       confirmed: bool | None = None,

@@ -307,6 +307,20 @@ class ChatView(Gtk.ScrolledWindow):
         self._column.append(row)
         self._scroll_bottom()
 
+    def add_steer(self, text: str) -> None:
+        """A mid-turn instruction: shown as a note, not a new user bubble."""
+        self._dismiss_welcome()
+        row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
+        row.set_halign(Gtk.Align.END)
+        chip = Gtk.Label(label=f"↳ steered: {text}", xalign=1.0)
+        chip.set_wrap(True)
+        chip.set_wrap_mode(2)
+        chip.set_max_width_chars(60)
+        chip.add_css_class("msg-steer")
+        row.append(chip)
+        self._column.append(row)
+        self._scroll_bottom()
+
     def add_error(self, message: str) -> None:
         lbl = Gtk.Label(label=message, xalign=0)
         lbl.add_css_class("error-box")

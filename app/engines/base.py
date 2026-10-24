@@ -102,6 +102,14 @@ class Turn(GObject.Object):
     def cancelled(self) -> bool:
         return self._cancelled
 
+    def steer(self, text: str) -> bool:
+        """Add a message to a turn that is already running.
+
+        Engines without steering inherit this and return False, so the UI can
+        offer the affordance only where it works.
+        """
+        return False
+
     # -- answering the engine ---------------------------------------------
     def answer_dialog(self, request_id: str, *, value: str | None = None,
                       confirmed: bool | None = None,

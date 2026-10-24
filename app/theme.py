@@ -372,6 +372,14 @@ label.md-h3 {{ font-size: 16px; font-weight: 600; }}
   border-color: rgba(140, 47, 47, 0.35);
 }}
 .approval-note {{ font-size: 11.5px; color: @g-text_dim; }}
+.msg-steer {{
+  background-image: none;
+  background: @g-surface_alt;
+  color: @g-text_mid;
+  border-radius: 12px;
+  padding: 8px 12px;
+  font-size: 13px;
+}}
 
 /* ---- work panel ---- */
 .work-panel {{

@@ -155,6 +155,7 @@ class Window(Adw.ApplicationWindow):
         self.composer = composer.Composer(
             on_submit=self.submit,
             on_stop=self.stop,
+            on_steer=self.steer,
             on_pick_workspace=self.pick_workspace,
             on_pick_model=self._show_models,
             on_pick_approval=self._show_approvals,
@@ -761,6 +762,8 @@ I also added a regression test for the missing check.
 
         msg = self.chat.begin_assistant(model=self._current_model_label())
         self.composer.set_streaming(True)
+        self.composer.set_steering(
+            self.engine.supports(engine_mod.STEERING))
 
         prompt = history + text
         self._requested_engine_id = conv.engine_id
@@ -779,6 +782,19 @@ I also added a regression test for the missing check.
         self.turn.connect("dialog", self._on_dialog)
         self.turn.connect("finished", lambda _t, r: self._on_finished(msg, r))
         self.turn.connect("failed", lambda _t, e: self._on_failed(msg, e))
+
+    def steer(self, text: str) -> None:
+        """Send an instruction into the running turn, when the engine can."""
+        turn = self.turn
+        if turn is None or not str(text).strip():
+            return
+        if not self.engine.supports(engine_mod.STEERING):
+            return
+        if turn.steer(text):
+            self.chat.add_steer(text)
+            if self.conversation is not None:
+                self.conversation.add("user", f"[steer] {text}")
+                self.store.save(self.conversation)
 
     def _on_dialog(self, _turn, request: dict) -> None:
         """The engine is blocked on a question. Show the card and answer it.
@@ -911,6 +927,7 @@ I also added a regression test for the missing check.
         return bool(stack is not None and stack.deny_current())
 
     def _on_failed(self, msg, message: str) -> None:
+        self._approvals.clear()
         self.composer.set_streaming(False)
         self.turn = None
         self.session.running = False

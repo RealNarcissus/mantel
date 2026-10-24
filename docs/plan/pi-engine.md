@@ -1,6 +1,6 @@
 # Plan: Pi as the first engine
 
-**Status:** M0–M2 complete; M3 in progress (capability gating done)
+**Status:** M0–M3 complete; M4 (durability) is next
 **Goal:** replace the legacy vendor engine with **Pi** (`pi --mode rpc`) as the
 default engine, without changing the shell, and then adopt **Pi Durable** for
 conversations and tasks.
@@ -148,18 +148,22 @@ denies the visible card before it stops the turn.
 - the shipped TypeScript gate loads in real `pi` (exit 0, `get_state` answered)
 - the gate is fail-closed outside RPC mode (`ctx.hasUI` false → block)
 
-**M3 — tool surface parity (in progress)**
-- *Done:* capability gating. Every rail surface declares the capability it
-  needs, and the window builds only what the engine backs: Connectors and
-  Skills are gone for Pi, the account page is gone without an account, and
-  Settings hides the vendor permission file and the CLI approval-mode control
-  (Pi states "approvals are enforced per call" instead). Approval modes are
-  CLI flags, so the session never passes them to an engine that cannot take
-  them.
-- *Remaining:* tool events already drive the work panel; `get_state` should
-  drive the status pill, and the Pi-specific extras (compaction, steering)
-  need UI. *Done when:* the work panel, changes panel and status behave the
-  same on both engines.
+**M3 — tool surface parity (done)**
+- *Capability gating:* every rail surface declares the capability it needs and
+  the window builds only what the engine backs — Connectors and Skills are gone
+  for Pi, the account page is gone without an account, and Settings hides the
+  vendor permission file and CLI approval-mode control (Pi says "approvals are
+  enforced per call" instead). Vendor approval flags never reach an engine that
+  cannot take them.
+- *Steering:* Enter inside a running turn sends the text to the engine
+  (`steer`) instead of stopping it, and the transcript shows it as a quiet
+  `↳ steered:` note rather than a second user turn. Only offered when the
+  engine advertises the capability; a settled turn refuses rather than
+  silently dropping the message.
+- *Parity:* tool events already drive the work panel and the changes panel is
+  engine-independent; the status pill is derived from session state
+  (needs-input / running / error / complete), so it reads the same on both
+  engines. Compaction appears as a work item.
 
 **M4 — durability (4–6 days)**
 Persistent Pi sessions: restore the transcript on start, resume after a kill,

@@ -274,6 +274,33 @@ def test_shipped_extension_loads(failures: list[str]) -> None:
         failures.append(f"extension reported errors: {errors[:2]}")
 
 
+def test_steering(failures: list[str]) -> None:
+    """A running turn takes another instruction when the engine supports it."""
+    engine = pi_engine()
+    turn = engine.run("steer")
+    state: dict = {}
+
+    def on_delta(_t, _text):
+        if not state.get("steered"):
+            state["steered"] = True
+            state["accepted"] = turn.steer("check the staging logs")
+
+    turn.connect("delta", on_delta)
+    seen = collect(turn, timeout=20)
+    text = "".join(seen["deltas"])
+    print(f"  steer -> accepted={state.get('accepted')} deltas={text!r}")
+    if not state.get("accepted"):
+        failures.append("the adapter refused to steer a running turn")
+    if "|steered:check the staging logs" not in text:
+        failures.append(f"the engine did not receive the steer: {text!r}")
+
+    # after the turn settles, steering must be refused rather than silently lost
+    turn = pi_engine().run("hello")
+    collect(turn)
+    if turn.steer("too late"):
+        failures.append("a settled turn should refuse steering")
+
+
 def test_capability_gating(failures: list[str]) -> None:
     """Switching engines changes what the app offers, not just who answers."""
     from app import session as session_mod  # noqa: PLC0415
@@ -328,7 +355,8 @@ def main() -> int:
                  test_rejected_prompt, test_crash, test_cancel,
                  test_approval_allow, test_approval_deny,
                  test_facade, test_missing_engine,
-                 test_capability_gating, test_shipped_extension_loads):
+                 test_capability_gating, test_steering,
+                 test_shipped_extension_loads):
         print(f"\n  {test.__name__}")
         test(failures)
 
