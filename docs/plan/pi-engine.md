@@ -192,12 +192,16 @@ Evaluate Pi Durable's background tasks for scheduled prompts (including the
 "app closed" question: a small daemon, or documented as app-open-only).
 *Done when:* a schedule's run is visible as a task with its own transcript.
 
-**M6 — Gemini engine, legacy deleted (4–5 days)**
-`engines/gemini_sdk.py` on `google-genai`: streaming, function calling,
-approvals through the same adapter contract, and Live API for voice as a
-stretch. Delete the legacy adapter and the vendor OAuth module.
-*Done when:* the contract test passes against Pi **and** Gemini, and no vendor
-credential path remains in the repo.
+**M6 — Gemini engine, legacy deleted (in progress)**
+- *Done:* `app/engines/gemini_api.py` speaks the public REST streaming API with
+  no third-party dependency: model listing, SSE deltas, usage normalisation,
+  HTTP error mapping and cancellation. It advertises `chat` but not `tools`, so
+  the shell keeps the conversation and hides agent-only surfaces — the
+  capability system doing exactly what it was built for. Verified against a
+  local fake API, so no key or network is needed in CI.
+- *Remaining:* function calling and approvals for this engine, then deleting
+  the legacy adapter and its OAuth module. The contract test already runs
+  against Pi; adding it for Gemini is the milestone's acceptance bar.
 
 Total: roughly 3–4 focused weeks to M6, with a publishable v0.2 at M2.
 

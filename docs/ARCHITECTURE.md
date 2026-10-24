@@ -14,7 +14,7 @@ history, tools, schedules — is engine-independent by design.
  app/engine.py     ──── facade ───────► engines/pi_rpc.py      (default target)
                         ├── spawn         pi --mode rpc   JSONL in / events out
                         │                 extension_ui_request / response
-                        └── events   ─── engines/gemini_sdk.py   (planned)
+                        └── events   ─── engines/gemini_api.py   (REST, chat-only)
                                       engines/legacy_agy.py     (v0.1 only)
  app/session.py    modes, approval state, tool records, work items
 ```

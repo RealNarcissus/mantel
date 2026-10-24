@@ -106,7 +106,7 @@ stores are engine-independent.
 | Engine | Status | Notes |
 |---|---|---|
 | **Pi** ([pi.dev](https://pi.dev)) | **M3 complete — default target** | `pi --mode rpc`: streaming, tool events, models, effort, abort, sessions, and **pre-execution approvals** through the shipped gate extension (`pi-extensions/approvals.ts`). Verified against `pi` 1.4.0 and a protocol fake. Durability lands in M4. |
-| **Gemini API** ([`google-genai`](https://pypi.org/project/google-genai/)) | planned | Direct SDK integration for people who want Gemini models with their own API key, including the Live API for voice. |
+| **Gemini API** | **implemented (chat, streaming)** — set `GEMINI_API_KEY` | Speaks the public REST streaming API directly, with no third-party Python dependency. Verified against a local fake API: streaming, usage, model listing and error mapping. Tool calling is the next step; the capability system hides agent-only surfaces until it lands. |
 | **Legacy vendor engine** | v0.1 only, being removed | The current working bridge drives a bundled CLI engine. It is why this repo exists and is documented in [docs/reverse-engineering/](docs/reverse-engineering/), but it depends on vendor-issued credentials and is not the future. |
 
 Swapping engines changes what the app *offers*, not how it feels: the same
@@ -131,7 +131,8 @@ python3 -m app.main --demo
 ```
 
 Requirements: Linux with GTK4 and libadwaita, Python 3.10+ (developed and
-tested on 3.14), PyGObject, Pycairo, and an engine on `PATH`.
+tested on 3.14), PyGObject, Pycairo, and an engine — either the vendor CLI on
+`PATH`, `pi`, or a Gemini API key in `GEMINI_API_KEY`.
 
 ```bash
 # Debian/Ubuntu
