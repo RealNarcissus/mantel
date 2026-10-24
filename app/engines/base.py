@@ -39,6 +39,9 @@ class Turn(GObject.Object):
         thought(str)          reasoning text
         tool(str, str)        tool name and a JSON payload
                               {"parameters", "state", "output", "error", "duration"}
+        dialog(dict)          the engine is blocked waiting for an answer:
+                              {"id", "method", "title", "message", "options",
+                               "timeout_ms"} — answer with `answer_dialog()`
         finished(dict)        {"status", "text", "conversation_id", "usage",
                               "duration", "error", "denied"}
         failed(str)           a human-readable reason
@@ -51,6 +54,7 @@ class Turn(GObject.Object):
         "delta": (GObject.SignalFlags.RUN_FIRST, None, (str,)),
         "thought": (GObject.SignalFlags.RUN_FIRST, None, (str,)),
         "tool": (GObject.SignalFlags.RUN_FIRST, None, (str, str)),
+        "dialog": (GObject.SignalFlags.RUN_FIRST, None, (object,)),
         "finished": (GObject.SignalFlags.RUN_FIRST, None, (object,)),
         "failed": (GObject.SignalFlags.RUN_FIRST, None, (str,)),
     }
@@ -92,6 +96,16 @@ class Turn(GObject.Object):
     @property
     def cancelled(self) -> bool:
         return self._cancelled
+
+    # -- answering the engine ---------------------------------------------
+    def answer_dialog(self, request_id: str, *, value: str | None = None,
+                      confirmed: bool | None = None,
+                      cancelled: bool = False) -> bool:
+        """Answer a `dialog` request. Returns True when the engine accepted it.
+
+        Engines that cannot ask mid-turn simply inherit this and return False.
+        """
+        return False
 
     # -- helpers for adapters ----------------------------------------------
     def emit_soon(self, signal: str, *args) -> None:

@@ -33,6 +33,7 @@ import shutil
 import subprocess
 import threading
 import time
+from pathlib import Path
 
 import gi
 
@@ -52,6 +53,14 @@ _DIALOG_METHODS = frozenset({"select", "confirm", "input", "editor"})
 
 #: How long an abort may take before the process is killed.
 _ABORT_GRACE_MS = 4000
+
+#: Default window for a dialog when the extension did not set one. Without it a
+#: client that never answers would wedge the engine forever.
+_DEFAULT_DIALOG_MS = 600_000
+
+#: The approval gate shipped with the client.
+APPROVALS_EXTENSION = (Path(__file__).resolve().parents[2]
+                       / "pi-extensions" / "approvals.ts")
 
 
 def find_binary() -> str | None:
@@ -111,6 +120,24 @@ class PiTurn(Turn):
     def _force_stop(self) -> bool:
         self._stop_process()
         return False
+
+    # -- answering a blocked engine ----------------------------------------
+    def answer_dialog(self, request_id: str, *, value: str | None = None,
+                      confirmed: bool | None = None,
+                      cancelled: bool = False) -> bool:
+        request = getattr(self, "_pending_dialog", None)
+        if not request or request.get("id") != request_id:
+            return False
+        self._pending_dialog = None
+        reply: dict = {"type": "extension_ui_response", "id": request_id}
+        if cancelled:
+            reply["cancelled"] = True
+        elif confirmed is not None:
+            reply["confirmed"] = bool(confirmed)
+        else:
+            reply["value"] = "" if value is None else str(value)
+        self._send(reply)
+        return True
 
     # -- writing to the engine ---------------------------------------------
     def _send(self, payload: dict) -> None:
@@ -260,6 +287,7 @@ class PiAdapter(EngineAdapter):
         if effort:
             argv += ["--thinking", effort]
         argv += self._mode_flags(mode)
+        argv += self._extension_flags()
         argv += list(extra_flags)
 
         env = dict(os.environ)
@@ -390,7 +418,7 @@ class PiAdapter(EngineAdapter):
             return False
 
         if kind == "extension_ui_request":
-            self._decline_dialog(turn, record)
+            self._ask_client(turn, record)
             return False
 
         if kind == "compaction_start":
@@ -443,21 +471,49 @@ class PiAdapter(EngineAdapter):
                 turn.emit_soon("started", session_id)
         return False
 
-    def _decline_dialog(self, turn: PiTurn, record: dict) -> None:
-        """Answer a blocking dialog with a refusal.
+    def _extension_flags(self) -> list[str]:
+        """Load the approval gate when the client is running from a checkout.
 
-        Milestone M2 routes these to the approval cards; until then the safe
-        answer is no, so an extension can never wedge the UI waiting for a
-        window that will not appear.
+        The gate is what turns Pi's `tool_call` hook into Mantel's approval
+        ladder. Without it, Pi runs with its own defaults; the UI says so.
+        """
+        if os.environ.get("MANTEL_NO_APPROVALS_EXT"):
+            return []
+        path = Path(os.environ.get("MANTEL_APPROVALS_EXT") or APPROVALS_EXTENSION)
+        if path.is_file():
+            return ["--extension", str(path)]
+        return []
+
+    def _ask_client(self, turn: PiTurn, record: dict) -> None:
+        """Forward a blocking engine question to the UI.
+
+        The engine is waiting on stdin, so every path must end in an answer:
+        the card answers it, or the fallback timer declines on the user's
+        behalf. Editors and free-text dialogs are not used by the shipped gate,
+        but they are forwarded too rather than silently ignored.
         """
         method = str(record.get("method") or "")
         request_id = record.get("id")
         if method not in _DIALOG_METHODS or not request_id:
             return
-        if method == "confirm":
-            reply = {"type": "extension_ui_response", "id": request_id,
-                     "confirmed": False}
-        else:
-            reply = {"type": "extension_ui_response", "id": request_id,
-                     "cancelled": True}
-        turn._send(reply)
+
+        options = record.get("options")
+        timeout = int(record.get("timeout") or _DEFAULT_DIALOG_MS)
+        request = {
+            "id": request_id,
+            "method": method,
+            "title": str(record.get("title") or ""),
+            "message": str(record.get("message") or ""),
+            "options": [str(o) for o in options] if isinstance(options, list)
+                       else [],
+            "timeout_ms": timeout,
+        }
+        turn._pending_dialog = request
+        turn.emit_soon("dialog", request)
+
+        def decline_if_unanswered() -> bool:
+            if getattr(turn, "_pending_dialog", None) is request:
+                turn.answer_dialog(request_id, cancelled=True)
+            return False
+
+        GLib.timeout_add(timeout, decline_if_unanswered)

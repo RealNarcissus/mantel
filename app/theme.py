@@ -366,6 +366,12 @@ label.md-h3 {{ font-size: 16px; font-weight: 600; }}
   font-family: "{FONT_MONO}"; font-size: 12.5px; color: @g-text_mid;
 }}
 .approval-stack {{ margin-top: 8px; }}
+.approval-deny {{
+  background-image: none;
+  color: #8C2F2F;
+  border-color: rgba(140, 47, 47, 0.35);
+}}
+.approval-note {{ font-size: 11.5px; color: @g-text_dim; }}
 
 /* ---- work panel ---- */
 .work-panel {{

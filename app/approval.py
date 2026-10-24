@@ -70,6 +70,72 @@ class ApprovalCard(Gtk.Box):
         self._on_decide(self.approval, scope)
 
 
+class DialogCard(Gtk.Box):
+    """A question from the engine that is blocking until answered.
+
+    With the Pi adapter this is how approvals arrive: the engine's `tool_call`
+    hook asks before the tool runs, so "deny" means the call never happened.
+    The card is deliberately the same shape as `ApprovalCard` — same voice,
+    same place, same keyboard rules.
+    """
+
+    def __init__(self, request: dict, on_answer):
+        super().__init__(orientation=Gtk.Orientation.VERTICAL, spacing=10)
+        self.add_css_class("approval-card")
+        self.request = request
+        self._on_answer = on_answer
+
+        head = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+        head.append(theme.icon("lock", 18, tone=""))
+        title = Gtk.Label(label=request.get("title") or "Approve this action?",
+                          xalign=0)
+        title.add_css_class("approval-title")
+        title.set_ellipsize(3)
+        title.set_hexpand(True)
+        head.append(title)
+        self.append(head)
+
+        message = request.get("message") or ""
+        if message:
+            detail = Gtk.Label(label=message, xalign=0)
+            detail.add_css_class("approval-detail")
+            detail.set_wrap(True)
+            self.append(detail)
+
+        note = Gtk.Label(
+            label="The assistant is paused until you answer.  Esc denies.",
+            xalign=0)
+        note.add_css_class("approval-note")
+        self.append(note)
+
+        row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        row.set_halign(Gtk.Align.START)
+        options = request.get("options") or ["Allow", "Deny"]
+        for index, option in enumerate(options):
+            button = Gtk.Button(label=str(option))
+            # reuse the shell's own button styles so the card matches the rest
+            button.add_css_class("btn-primary" if index == 0 else "btn-secondary")
+            if str(option).lower().startswith("deny"):
+                button.add_css_class("approval-deny")
+            button.connect("clicked", lambda _b, o=option: self._answer(str(o)))
+            row.append(button)
+        self.append(row)
+
+    def _answer(self, value: str) -> None:
+        self.set_visible(False)
+        self._on_answer(value)
+
+    def deny(self) -> None:
+        """Escape: answer with the deny option, or cancel the dialog."""
+        options = self.request.get("options") or []
+        for option in options:
+            if str(option).lower().startswith("deny"):
+                self._answer(str(option))
+                return
+        self.set_visible(False)
+        self._on_answer(None)
+
+
 class ApprovalStack(Gtk.Box):
     """A non-modal stack of approval cards."""
 
@@ -86,6 +152,22 @@ class ApprovalStack(Gtk.Box):
         for approval in approvals:
             self.append(ApprovalCard(approval, self._on_decide, can_grant))
         self.set_visible(bool(approvals))
+
+    def ask(self, request: dict, on_answer) -> None:
+        """Show one blocking engine question. Replaces any previous card."""
+        self.clear()
+        self.append(DialogCard(request, on_answer))
+        self.set_visible(True)
+
+    def deny_current(self) -> bool:
+        """Deny the visible question, if any. Returns True when one was shown."""
+        child = self.get_first_child()
+        while child is not None:
+            if isinstance(child, DialogCard):
+                child.deny()
+                return True
+            child = child.get_next_sibling()
+        return False
 
     def clear(self) -> None:
         while (child := self.get_first_child()) is not None:
