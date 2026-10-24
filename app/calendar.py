@@ -267,17 +267,27 @@ def parse_ics(text: str, *, source: str = "") -> list[Event]:
 
 
 def load(path: str) -> list[Event]:
-    """Read one source: a local file, or an http(s) URL if you must."""
+    """Read one source: a file, a folder of `.ics` exports, or an http(s) URL."""
     try:
         if path.startswith(("http://", "https://")):
             with urllib.request.urlopen(path, timeout=15) as response:
                 text = response.read().decode("utf-8", "replace")
-        else:
-            text = Path(os.path.expanduser(path)).read_text(
-                errors="replace")
+            return parse_ics(text, source=path)
+
+        target = Path(os.path.expanduser(path))
+        if target.is_dir():
+            events: list[Event] = []
+            for child in sorted(target.glob("*.ics")):
+                try:
+                    events.extend(parse_ics(
+                        child.read_text(errors="replace"),
+                        source=str(child)))
+                except OSError:
+                    continue
+            return events
+        return parse_ics(target.read_text(errors="replace"), source=path)
     except (OSError, ValueError, urllib.error.URLError):
         return []
-    return parse_ics(text, source=path)
 
 
 # --- expanding recurrences --------------------------------------------------
