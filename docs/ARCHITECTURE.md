@@ -103,6 +103,13 @@ not redistributable, so `app/theme.py` and `app/fonts_env.py` treat them as
 optional and degrade to system fonts and Adwaita icons. Nothing crashes, and
 the layout is identical either way.
 
+**The store is an index, not the only copy.** When the engine keeps sessions
+(Pi does), the client reconciles a thread against the engine's own history on
+open: a crash between the engine committing and the client saving cannot lose
+a turn. The merge is content-aware — the stored transcript is matched as a
+contiguous run inside the engine's history — and falls back to merging by
+content when the two diverge.
+
 **Demo mode is a first-class path.** `--demo` builds the window against a
 throwaway store, a neutral identity and neutral paths. It exists so reviewers
 (and the screenshot script) can see the application without an account or an

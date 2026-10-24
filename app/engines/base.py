@@ -102,6 +102,14 @@ class Turn(GObject.Object):
     def cancelled(self) -> bool:
         return self._cancelled
 
+    def history(self, conversation_id: str) -> list[dict]:
+        """[{"role": "user"|"assistant", "text": …}] for a stored session.
+
+        Engines that cannot enumerate a session inherit this and return an
+        empty list; the UI then relies on its own store.
+        """
+        return []
+
     def steer(self, text: str) -> bool:
         """Add a message to a turn that is already running.
 

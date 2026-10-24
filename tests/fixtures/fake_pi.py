@@ -11,6 +11,8 @@ Scenarios are selected by the prompt text:
     "hello"     streams "Hello " + "world", runs one bash tool, settles
     "slow"      streams a delta, then waits until aborted
     "steer"     streams, then waits for a steer and echoes it
+    "interrupt" commits the user message, then dies mid-turn (crash)
+    "recap"     reports how many messages the session already holds
     "fail"      rejects the prompt with success:false
     "approve"   asks the client to approve a tool call, then reports the answer
     "crash"     exits mid-turn without settling
@@ -20,7 +22,10 @@ Usage: MANTEL_PI_BIN=tests/fixtures/fake_pi.py
 from __future__ import annotations
 
 import json
+import os
+import re
 import sys
+import tempfile
 import time
 
 MODELS = [
@@ -31,6 +36,41 @@ MODELS = [
 ]
 
 SESSION_ID = "fake-session-0001"
+
+
+# --- a tiny stand-in for Pi's session store --------------------------------
+
+def sessions_dir() -> str:
+    base = os.environ.get("FAKE_PI_SESSIONS") or os.path.join(
+        tempfile.gettempdir(), "fake_pi_sessions")
+    os.makedirs(base, exist_ok=True)
+    return base
+
+
+def session_file(session_id: str) -> str:
+    safe = re.sub(r"[^A-Za-z0-9._-]", "_", session_id)
+    return os.path.join(sessions_dir(), f"{safe}.json")
+
+
+def load_messages(session_id: str) -> list[dict]:
+    try:
+        with open(session_file(session_id), "r", encoding="utf-8") as handle:
+            data = json.load(handle)
+        return data if isinstance(data, list) else []
+    except (OSError, ValueError):
+        return []
+
+
+def save_messages(session_id: str, messages: list[dict]) -> None:
+    try:
+        with open(session_file(session_id), "w", encoding="utf-8") as handle:
+            json.dump(messages, handle)
+    except OSError:
+        pass
+
+
+def block(role: str, text: str) -> dict:
+    return {"role": role, "content": [{"type": "text", "text": text}]}
 
 
 def send(payload: dict) -> None:
@@ -70,8 +110,9 @@ def main() -> int:
         sys.stderr.write("fake pi: only --mode rpc is implemented\n")
         return 2
 
+    persist = "--session-id" in argv
     session_id = SESSION_ID
-    if "--session-id" in argv:
+    if persist:
         session_id = argv[argv.index("--session-id") + 1]
 
     for line in sys.stdin:
@@ -98,6 +139,10 @@ def main() -> int:
         elif kind == "get_available_models":
             respond(request_id, "get_available_models", {"models": MODELS})
 
+        elif kind == "get_messages":
+            messages = load_messages(session_id) if persist else []
+            respond(request_id, "get_messages", {"messages": messages})
+
         elif kind == "prompt":
             message = str(command.get("message") or "")
             if message == "fail":
@@ -105,7 +150,11 @@ def main() -> int:
                         error="no provider configured")
                 continue
             respond(request_id, "prompt", {"disposition": "started"})
-            _run_turn(message, session_id)
+            if persist:
+                saved = load_messages(session_id)
+                saved.append(block("user", message))
+                save_messages(session_id, saved)
+            _run_turn(message, session_id, persist)
 
         elif kind == "abort":
             respond(request_id, "abort")
@@ -116,7 +165,15 @@ def main() -> int:
     return 0
 
 
-def _run_turn(message: str, session_id: str) -> None:
+def _remember(session_id: str, persist: bool, role: str, text: str) -> None:
+    if not persist:
+        return
+    saved = load_messages(session_id)
+    saved.append(block(role, text))
+    save_messages(session_id, saved)
+
+
+def _run_turn(message: str, session_id: str, persist: bool = False) -> None:
     send({"type": "agent_start"})
     send({"type": "turn_start"})
     send({"type": "message_start",
@@ -134,6 +191,20 @@ def _run_turn(message: str, session_id: str) -> None:
                                         "contentIndex": 0, "delta": "work"}})
         time.sleep(30)      # until aborted
         send({"type": "agent_settled", "aborted": True})
+        return
+
+    if message == "interrupt":
+        # commit what a real engine would have committed, then die mid-turn
+        stream("partial")
+        sys.stderr.write("fake pi: interrupted mid-turn\n")
+        sys.exit(4)
+
+    if message == "recap":
+        count = len(load_messages(session_id)) if persist else 0
+        text = f"resumed:{count}"
+        stream(text)
+        _remember(session_id, persist, "assistant", text)
+        send({"type": "agent_settled", "aborted": False})
         return
 
     if message == "steer":
@@ -202,6 +273,7 @@ def _run_turn(message: str, session_id: str) -> None:
         return
 
     stream("Hello world")
+    _remember(session_id, persist, "assistant", "Hello world")
     send({"type": "tool_execution_start", "toolCallId": "call_1",
           "toolName": "bash", "args": {"command": "echo hi"}})
     send({"type": "tool_execution_end", "toolCallId": "call_1",

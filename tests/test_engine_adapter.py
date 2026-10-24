@@ -274,6 +274,85 @@ def test_shipped_extension_loads(failures: list[str]) -> None:
         failures.append(f"extension reported errors: {errors[:2]}")
 
 
+def test_transcript_reconciliation(failures: list[str]) -> None:
+    """The merge rule between our store and the engine's session history."""
+    from app.window import Window  # noqa: PLC0415
+
+    merge = Window._missing_turns  # noqa: SLF001
+    history = [
+        {"role": "user", "text": "a"},
+        {"role": "assistant", "text": "b"},
+        {"role": "user", "text": "c"},
+        {"role": "assistant", "text": "d"},
+    ]
+
+    trailing = merge(history[:2], history)
+    print(f"  trailing gap -> {[e['text'] for e in trailing]}")
+    if [e["text"] for e in trailing] != ["c", "d"]:
+        failures.append(f"trailing gap merged wrong: {trailing}")
+
+    if merge(history, history):
+        failures.append("a complete transcript should merge nothing")
+
+    if merge([], history) != history:
+        failures.append("an empty store should take the whole history")
+
+    middle = merge([history[1]], history)
+    if [e["text"] for e in middle] != ["c", "d"]:
+        failures.append(f"a mid-thread match merged wrong: {middle}")
+
+    divergent = merge([{"role": "user", "text": "zzz"}], history)
+    if len(divergent) != 4:
+        failures.append(f"a divergent store should not lose turns: {divergent}")
+
+
+def test_session_durability(failures: list[str]) -> None:
+    """A conversation survives its process — and a crash mid-turn."""
+    import tempfile  # noqa: PLC0415
+
+    os.environ["FAKE_PI_SESSIONS"] = tempfile.mkdtemp(prefix="fake-pi-sessions-")
+    try:
+        engine = pi_engine()
+        session = "sess-durable-1"
+
+        # 1. a normal turn commits to the session store
+        seen = collect(engine.run("hello", conversation_id=session))
+        if (seen["finished"] or {}).get("status") != "SUCCESS":
+            failures.append("the first turn did not complete")
+        history = engine.history(session)
+        print(f"  history after 1 turn: {history}")
+        if [m["role"] for m in history] != ["user", "assistant"]:
+            failures.append(f"unexpected history shape: {history}")
+        if "Hello world" not in (history[-1]["text"] if history else ""):
+            failures.append("the reply was not stored in the session")
+
+        # 2. a turn that dies mid-way leaves the committed state behind
+        crashed = collect(engine.run("interrupt", conversation_id=session))
+        print(f"  crash -> failed={crashed['failed']!r}")
+        if not crashed["failed"]:
+            failures.append("a process that dies mid-turn must emit failed")
+
+        # 3. a fresh process resumes the same session and sees the history
+        resumed = collect(engine.run("recap", conversation_id=session))
+        text = "".join(resumed["deltas"])
+        expected = len(engine.history(session)) - 1   # minus the recap reply
+        print(f"  resumed -> {text!r} (history had {expected} before it)")
+        if not text.startswith("resumed:"):
+            failures.append(f"no session context after the crash: {text!r}")
+        else:
+            count = int(text.split(":", 1)[1])
+            if count < 3:
+                failures.append(
+                    f"session lost messages across the crash: {count}")
+
+        # 4. our own store's id is what Pi resumed with
+        if not resumed["started"] or resumed["started"] != session:
+            failures.append(
+                f"session id changed across processes: {resumed['started']!r}")
+    finally:
+        os.environ.pop("FAKE_PI_SESSIONS", None)
+
+
 def test_steering(failures: list[str]) -> None:
     """A running turn takes another instruction when the engine supports it."""
     engine = pi_engine()
@@ -355,7 +434,8 @@ def main() -> int:
                  test_rejected_prompt, test_crash, test_cancel,
                  test_approval_allow, test_approval_deny,
                  test_facade, test_missing_engine,
-                 test_capability_gating, test_steering,
+                 test_capability_gating, test_transcript_reconciliation,
+                 test_session_durability, test_steering,
                  test_shipped_extension_loads):
         print(f"\n  {test.__name__}")
         test(failures)

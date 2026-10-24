@@ -1,6 +1,6 @@
 # Plan: Pi as the first engine
 
-**Status:** M0–M3 complete; M4 (durability) is next
+**Status:** M0–M3 complete; M4 (durability) in progress
 **Goal:** replace the legacy vendor engine with **Pi** (`pi --mode rpc`) as the
 default engine, without changing the shell, and then adopt **Pi Durable** for
 conversations and tasks.
@@ -165,11 +165,27 @@ denies the visible card before it stops the turn.
   (needs-input / running / error / complete), so it reads the same on both
   engines. Compaction appears as a work item.
 
-**M4 — durability (4–6 days)**
+**M4 — durability (in progress)**
 Persistent Pi sessions: restore the transcript on start, resume after a kill,
-steering while busy, compaction surfaced as a work item. *Done when:* kill -9
-mid-turn, relaunch, and the conversation continues from the committed state —
-demonstrated by a test that does exactly that.
+steering while busy, compaction surfaced as a work item. *Done so far:*
+- **Session identity is durable.** The client's conversation id is what Pi
+  resumes with (`--session-id`), and a test proves the same id is used by a
+  fresh process after the previous one died.
+- **The engine's store is a source of truth.** `Engine.history(id)` reads a
+  session back through `get_messages`; the client uses it to reconcile a
+  transcript that is shorter than the engine's (the engine committed, the
+  client died before saving).
+- **A crash mid-turn is recoverable.** Test: a turn is interrupted by process
+  death, and the next turn in a new process still sees the committed history
+  (`resumed:4`) — steering, the approval gate and usage all keep working
+  afterwards.
+- **Reconciliation is content-aware**, not index-based: the stored transcript
+  is matched as a contiguous run inside the engine's history, with a
+  content-merge fallback when the two diverge.
+
+*Remaining:* an app-level `kill -9` harness (the current test kills the engine
+process), and a way to resume an interrupted turn from the UI rather than
+re-asking.
 
 **M5 — schedules become durable tasks (3–4 days)**
 Evaluate Pi Durable's background tasks for scheduled prompts (including the

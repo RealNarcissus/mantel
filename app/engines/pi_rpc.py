@@ -85,6 +85,19 @@ def _text_of(result: object) -> str:
     return str(result.get("text") or "")
 
 
+def _content_text(content: object) -> str:
+    """Flatten a Pi message's content (string or content blocks) to text."""
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        parts = []
+        for block in content:
+            if isinstance(block, dict) and block.get("type") == "text":
+                parts.append(str(block.get("text") or ""))
+        return "".join(parts)
+    return ""
+
+
 def _usage(raw, turn: Turn) -> None:
     """Normalise Pi's usage into the shape the transcript footer reads."""
     if not isinstance(raw, dict):
@@ -214,12 +227,37 @@ class PiAdapter(EngineAdapter):
         with self._model_lock:
             self._models = None
 
-    def _one_shot(self, command: str, timeout: int = 60) -> dict:
+    def history(self, conversation_id: str) -> list[dict]:
+        """Read a session's messages back from Pi's own store.
+
+        This is what makes a thread durable beyond our JSON: the conversation
+        lives in Pi's session file, so it can be replayed after a restart or
+        read by another client entirely.
+        """
+        if not conversation_id or not self.available:
+            return []
+        data = self._one_shot("get_messages", session_id=conversation_id)
+        out: list[dict] = []
+        for message in data.get("messages") or []:
+            if not isinstance(message, dict):
+                continue
+            role = str(message.get("role") or "")
+            if role not in ("user", "assistant"):
+                continue
+            text = _content_text(message.get("content"))
+            if text.strip():
+                out.append({"role": role, "text": text})
+        return out
+
+    def _one_shot(self, command: str, timeout: int = 60,
+                  session_id: str = "") -> dict:
         """Send one command to a fresh RPC process and read its response."""
         if not self.available:
             return {}
         request_id = self._id()
-        argv = [self.binary, "--mode", "rpc", "--no-session"]
+        session_args = (["--session-id", session_id] if session_id
+                        else ["--no-session"])
+        argv = [self.binary, "--mode", "rpc", *session_args]
         try:
             proc = subprocess.Popen(argv, stdin=subprocess.PIPE,
                                     stdout=subprocess.PIPE,

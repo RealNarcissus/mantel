@@ -75,3 +75,10 @@ class Engine:
 
     def run(self, prompt: str, *args, **kwargs) -> Turn:
         return self.adapter.run(prompt, *args, **kwargs)
+
+    def history(self, conversation_id: str) -> list[dict]:
+        """A stored session's messages, when the engine keeps them."""
+        try:
+            return list(self.adapter.history(conversation_id))
+        except Exception:  # noqa: BLE001 - history is best-effort
+            return []

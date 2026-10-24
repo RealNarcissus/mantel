@@ -8,6 +8,7 @@ a study of the Gemini desktop app; the design is @UiRahMan92's.
 from __future__ import annotations
 
 import os
+import threading
 import time
 
 import gi
@@ -1122,6 +1123,76 @@ I also added a regression test for the missing check.
         self.composer.set_model(self._current_model_label())
         self._go("chat")
         self._refresh_sidebar()
+        self._restore_from_engine(conv)
+
+    def _restore_from_engine(self, conv) -> None:
+        """Fill in turns the engine has but our store does not.
+
+        The store is written per message, so a crash between the engine
+        committing and the client saving can leave a thread short. When the
+        engine keeps its own session (Pi does), the transcript is reconciled
+        against it — our JSON stays an index, not the only copy.
+        """
+        engine_id = getattr(conv, "engine_id", "")
+        if not engine_id or not self.engine.supports(engine_mod.SESSIONS):
+            return
+        def work() -> None:
+            history = self.engine.history(engine_id)
+            if history:
+                GLib.idle_add(self._apply_history, conv, history)
+
+        threading.Thread(target=work, daemon=True,
+                         name="mantel-history").start()
+
+    @staticmethod
+    def _missing_turns(stored: list[dict], history: list[dict]) -> list[dict]:
+        """The turns the engine has that the store does not.
+
+        The common case is a trailing gap (the engine committed, the client
+        died before saving), so the stored transcript is matched as a
+        contiguous run inside the engine's history and everything after it is
+        appended. If the two disagree — a reset store, a thread started in
+        another client — the fallback merges by content rather than guessing
+        an index.
+        """
+        if not stored:
+            return list(history)
+        key = lambda entry: (entry.get("role"), entry.get("text"))  # noqa: E731
+        wanted = [key(entry) for entry in stored]
+        for offset in range(len(history) - len(wanted) + 1):
+            if [key(entry) for entry in history[offset:offset + len(wanted)]] == wanted:
+                return history[offset + len(wanted):]
+        seen = set(wanted)
+        extra = []
+        for entry in history:
+            if key(entry) in seen:
+                continue
+            seen.add(key(entry))
+            extra.append(entry)
+        return extra
+
+    def _apply_history(self, conv, history: list[dict]) -> bool:
+        """Append only the turns the transcript does not already show."""
+        if self.conversation is None or self.conversation.id != conv.id:
+            return False
+        stored = [{"role": m.role, "text": m.text}
+                  for m in conv.messages if m.text]
+        missing = self._missing_turns(stored, history)
+        if not missing:
+            return False
+        for entry in missing:
+            role = entry.get("role")
+            text = str(entry.get("text") or "")
+            if not text:
+                continue
+            if role == "user":
+                self.chat.add_user(text)
+            else:
+                self.chat.add_assistant_text(text)
+            conv.add(role, text)
+        self.store.save(conv)
+        self._refresh_sidebar()
+        return False
 
     def delete_chat(self, cid: str) -> None:
         self.store.delete(cid)
