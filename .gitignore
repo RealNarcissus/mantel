@@ -1,0 +1,73 @@
+# ---------------------------------------------------------------------------
+# Gemini Desktop for Linux
+#
+# Rule of thumb: source, documentation and tests are tracked. Anything
+# extracted from the original application, anything generated from it, and
+# anything machine-local is not.
+# ---------------------------------------------------------------------------
+
+# --- local analysis inputs --------------------------------------------------
+# The vendor artifacts this project reverse-engineered, plus the derived dumps.
+# None of it is redistributable, and all of it can be re-extracted; see
+# docs/reverse-engineering/.
+local-only/
+
+# --- extracted assets -------------------------------------------------------
+# Fonts, glyph atlases, app icon and Lottie files taken out of the bundle. The
+# client falls back to system fonts and stock icons when they are absent.
+# See assets/README.md.
+assets/fonts/
+assets/icons/
+assets/lottie/
+assets/icons_rendered/
+assets/raw/
+
+# fetched third-party pages kept out of docs/research (see local-only/)
+docs/research/**/*.html
+docs/research/**/*.txt
+
+# --- generated / runtime ----------------------------------------------------
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.cache/
+.data/
+tests/out/
+*.egg-info/
+build/
+dist/
+
+# --- credentials ------------------------------------------------------------
+# The client reads the engine's own credentials; never commit your own.
+credentials.json
+token.json
+oauth_creds.json
+client_secret*.json
+.env
+.env.*
+*.pem
+
+# --- vendor artifacts, wherever they end up --------------------------------
+*.dmg
+*.exe
+*.msi
+*.pkg
+*.AppImage
+*.snap
+*.zip
+*.mp4
+*.mov
+*.app/
+
+# --- editor / OS noise ------------------------------------------------------
+.DS_Store
+Thumbs.db
+desktop.ini
+*.swp
+*.swo
+*~
+.idea/
+.vscode/
