@@ -100,7 +100,7 @@ def main() -> int:
     from app import engine as engine_mod  # noqa: PLC0415
     from app import session as session_mod  # noqa: PLC0415
 
-    sess = session_mod.Session(engine_mod.Engine(adapter="legacy"),
+    sess = session_mod.Session(engine_mod.Engine(adapter="pi"),
                                mode=session_mod.MODE_TASK)
     brief = sess.brief("how do we deploy this")
     print(f"  turn prefix mentions deploy.md: {'deploy.md' in brief}")

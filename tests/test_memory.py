@@ -144,7 +144,7 @@ def main() -> int:
     from app import engine as engine_mod  # noqa: PLC0415
     from app import session as session_mod  # noqa: PLC0415
 
-    engine = engine_mod.Engine(adapter="legacy")
+    engine = engine_mod.Engine(adapter="pi")
     sess = session_mod.Session(engine, mode=session_mod.MODE_TASK)
     prompt = sess.brief("What should I work on?")
     print(f"  injected prompt:\n{prompt}")

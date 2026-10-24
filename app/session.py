@@ -26,10 +26,14 @@ import time
 from dataclasses import dataclass, field
 from pathlib import Path
 
+MUTATING = frozenset({
+    "write_file", "edit_file", "replace", "run_command", "bash", "delete_file",
+    "create_file", "move_file", "run_shell_command",
+})
+
 from app import engine as engine_mod
 from app import knowledge as knowledge_mod
 from app import memory as memory_mod
-from app import permissions
 
 
 # --- approval modes --------------------------------------------------------
@@ -131,7 +135,7 @@ class ToolActivity:
 
     @property
     def mutating(self) -> bool:
-        return self.name in permissions.MUTATING
+        return self.name in MUTATING
 
     @property
     def path(self) -> str:
@@ -358,31 +362,20 @@ class Session:
 
     # -- approval granting --------------------------------------------------
     def grant(self, approval: Approval, scope: str = "once") -> list[str]:
-        """Grant a denied action at the given scope.
+        """Grants are enforced by the engine's own gate now.
 
-        `once`    — this action, this path.
-        `session` — this action, this path, for the rest of the session.
-        `project` — anything inside the folder, for good.
+        The client can still remember a decision for this session; there is no
+        vendor permission file to write, so persistent grants no longer exist.
         """
-        added: list[str] = []
-        if scope == "project":
-            # the engine's refusal carries no path, so a folder grant is
-            # scoped to the workspace the agent is working in
-            if approval.path:
-                folder = str(Path(approval.path).parent)
-            else:
-                folder = self.workspace or os.path.expanduser("~")
-            added = permissions.allow_folder(folder)
-        else:
-            added.append(permissions.allow(approval.action, approval.path or "*"))
         if scope in ("session", "project"):
-            # remember it for the life of this session
-            self._session_grants.update(added)
-        return added
+            grant = f"{approval.action}:{approval.path or '*'}"
+            self._session_grants.add(grant)
+            return [grant]
+        return []
 
     def grantable(self, approval: Approval) -> bool:
-        """Can the client persist a grant for this action?"""
-        return permissions.writable()
+        """Persistent grants are not offered: the engine owns the decision."""
+        return False
 
     # -- status -------------------------------------------------------------
     def status(self) -> str:

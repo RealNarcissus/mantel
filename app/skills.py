@@ -3,7 +3,7 @@
 A skill is a directory containing a ``SKILL.md`` — the same shape the
 desktop app uses (create by hand, or upload a ``.zip`` of a folder holding
 ``SKILL.md``).  The engine keeps them in ``~/.gemini/skills`` and ships
-plugins in ``~/.gemini/config/plugins``, each with a ``plugin.json``.
+plugins in the engine's local config directory, each with a ``plugin.json``.
 """
 from __future__ import annotations
 
@@ -13,7 +13,16 @@ import zipfile
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from app.account import gemini_dir
+import os  # noqa: E402
+
+
+def gemini_dir() -> Path:
+    """Where the engine keeps skills. Local config, not a vendor account."""
+    override = os.environ.get("MANTEL_ENGINE_HOME")
+    if override:
+        return Path(override).expanduser()
+    return Path(os.environ.get("XDG_CONFIG_HOME")
+                or (Path.home() / ".config")) / "mantel"
 
 SKILL_FILE = "SKILL.md"
 MAX_UPLOAD_BYTES = 100 * 1024 * 1024  # the desktop app's limit

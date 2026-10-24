@@ -35,7 +35,6 @@ def registry() -> dict[str, str]:
     """Adapter name -> dotted path. Imported lazily so a missing engine's
     dependencies never break the app."""
     return {
-        "legacy": "app.engines.legacy_agy:AgyAdapter",
         "pi": "app.engines.pi_rpc:PiAdapter",
         "gemini": "app.engines.gemini_api:GeminiAdapter",
     }

@@ -3,8 +3,8 @@
 Everything above this module talks to `Engine` and never to a specific engine.
 The concrete adapter is chosen here, by name, from `MANTEL_ENGINE`:
 
-    MANTEL_ENGINE=pi       drive Pi over its RPC protocol
-    MANTEL_ENGINE=legacy   the vendor CLI this project started with (default)
+    MANTEL_ENGINE=pi       drive Pi over its RPC protocol (default)
+    MANTEL_ENGINE=gemini   the public Gemini API with your own key
 
 Adding an engine means adding a module under `app/engines/` and one line to the
 registry there; the shell does not change.
@@ -17,7 +17,11 @@ from app.engines import DEFAULT_TIMEOUT, Turn, create, known, registry
 from app.engines.base import (ACCOUNT, APPROVALS, CHAT, CLI_FLAGS, COMPACTION,
                               CONNECTORS, IMAGES, PERMISSION_FILE, REMOTE,
                               SESSIONS, SKILLS, STEERING, TOOLS)
-from app.engines.legacy_agy import find_binary  # noqa: F401  (re-exported)
+def find_binary(name: str) -> str:
+    """Look for an executable on PATH (the adapters' shared helper)."""
+    import shutil  # noqa: PLC0415
+
+    return shutil.which(name) or ""
 
 __all__ = [
     "Engine", "Turn", "find_binary", "DEFAULT_TIMEOUT", "known",
@@ -26,8 +30,8 @@ __all__ = [
     "CLI_FLAGS",
 ]
 
-#: Used until Pi reaches parity (docs/plan/pi-engine.md, milestone M3).
-DEFAULT_ADAPTER = "legacy"
+#: The default engine: Pi over its RPC protocol.
+DEFAULT_ADAPTER = "pi"
 
 
 class Engine:

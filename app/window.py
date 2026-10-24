@@ -8,6 +8,7 @@ a study of the Gemini desktop app; the design is @UiRahMan92's.
 from __future__ import annotations
 
 import os
+from dataclasses import dataclass
 import threading
 import time
 
@@ -17,10 +18,8 @@ gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 from gi.repository import Adw, Gio, GLib, Gtk  # noqa: E402
 
-from app import account as account_mod
 from app import approval as approval_mod
 from app import chat_view, composer, engine as engine_mod
-from app import permissions
 from app import palette as palette_mod
 from app import session as session_mod
 from app import sidebar as sidebar_mod
@@ -29,6 +28,19 @@ from app.store import Store
 
 #: The surfaces in the rail, in the order the desktop app uses.
 #: (name, rail label, icon, capability the engine must provide)
+@dataclass
+class LocalIdentity:
+    """Who this install belongs to. Local, not a vendor account."""
+
+    name: str = "You"
+    email: str = ""
+    initials: str = "?"
+
+    @property
+    def display_name(self) -> str:
+        return self.name
+
+
 PAGES = (
     ("today", "Today", "light_mode", engine_mod.CHAT),
     ("chat", "Chat", "chat", engine_mod.CHAT),
@@ -38,7 +50,6 @@ PAGES = (
     ("memory", "Memory", "lightbulb", engine_mod.CHAT),
     ("review", "Review", "query_stats", engine_mod.CHAT),
     ("plugins", "Plugins", "tune", engine_mod.CHAT),
-    ("connectors", "Connectors", "extension", engine_mod.CONNECTORS),
     ("skills", "Skills", "notes_spark", engine_mod.SKILLS),
 )
 
@@ -80,13 +91,15 @@ class Window(Adw.ApplicationWindow):
         self.turn = None
         self.session = session_mod.Session(engine)
         self.approval = "ask"
+        self._trusted_folders: set[str] = set()
         self.effort = "medium"
         self._page_name = page
         if demo:
-            self._account = account_mod.Account(email=self.DEMO_MAIL,
-                                                has_refresh_token=True)
+            self._account = LocalIdentity(name=self.DEMO_NAME,
+                                          email=self.DEMO_MAIL,
+                                          initials=self.DEMO_INITIALS)
         else:
-            self._account = account_mod.load_account()
+            self._account = self._local_identity()
 
         # A surface exists only if the selected engine can back it. This is the
         # promise of the adapter seam: switching engines changes what the app
@@ -106,7 +119,7 @@ class Window(Adw.ApplicationWindow):
             on_open=self.open_chat,
             on_collapse=self._toggle_sidebar,
             on_theme=self._set_theme,
-            on_account=self._show_account,
+            on_account=self._show_about,
             user_name=self._account.display_name,
             user_mail=self._account.email or "Not signed in",
             avatar_initials=self._account.initials,
@@ -245,16 +258,6 @@ class Window(Adw.ApplicationWindow):
         """The pages the worker modules provide, if they are present."""
         # Connectors and Skills edit the *engine's* stores, so they only exist
         # for an engine that has them.
-        self.connectors = None
-        if self.engine.supports(engine_mod.CONNECTORS):
-            try:
-                from app.pages.connectors import ConnectorsPage  # noqa: PLC0415
-                self.connectors = ConnectorsPage(
-                    on_changed=self._refresh_sidebar)
-                self._pages.add_named(
-                    self._own_scroller(self.connectors), "connectors")
-            except Exception:  # noqa: BLE001
-                self.connectors = None
         self.skills = None
         if self.engine.supports(engine_mod.SKILLS):
             try:
@@ -345,17 +348,6 @@ class Window(Adw.ApplicationWindow):
             self._pages.add_named(self._own_scroller(self.settings), "settings")
         except Exception:  # noqa: BLE001
             self.settings = None
-        self.account_page = None
-        if self.engine.supports(engine_mod.ACCOUNT):
-            try:
-                from app.pages.account import AccountPage  # noqa: PLC0415
-                self.account_page = AccountPage(
-                    on_signed_in=self._on_signed_in,
-                    on_signed_out=self._on_signed_out)
-                self._pages.add_named(
-                    self._own_scroller(self.account_page), "account")
-            except Exception:  # noqa: BLE001
-                self.account_page = None
 
     @staticmethod
     def _own_scroller(page: Gtk.Widget) -> Gtk.Widget:
@@ -386,9 +378,6 @@ class Window(Adw.ApplicationWindow):
     def _page_names(self) -> set[str]:
         """Every page actually present in the stack."""
         wanted = ({"chat", "home", "settings"}
-                  | {name for name, _l, _i, _c in self._pages_for_engine}
-                  | {"account"} if self.engine.supports(engine_mod.ACCOUNT)
-                  else {"chat", "home", "settings"}
                   | {name for name, _l, _i, _c in self._pages_for_engine})
         return {name for name in wanted
                 if self._pages.get_child_by_name(name) is not None}
@@ -397,7 +386,7 @@ class Window(Adw.ApplicationWindow):
         for name, label, _icon, _cap in self._pages_for_engine:
             if name == page:
                 return label
-        return {"home": "Overview", "account": "Account"}.get(page, "Overview")
+        return {"home": "Overview"}.get(page, "Overview")
 
     def _sidebar_label(self, page: str) -> str:
         if page == "home":
@@ -405,14 +394,14 @@ class Window(Adw.ApplicationWindow):
         for name, label, _icon, _cap in self._pages_for_engine:
             if name == page:
                 return label
-        return ""          # the account page has no rail entry
+        return ""          # dashboard pages have no rail entry
 
     def _navigate(self, label: str) -> None:
         if label == "Help Center":
             self._show_shortcuts()
             return
         mapping = {"Chat": "chat", "Tasks": "tasks", "Create": "create",
-                   "Schedule": "schedule", "Connectors": "connectors",
+                   "Schedule": "schedule",
                    "Skills": "skills", "Goals": "home",
                    "Setting": "settings"}
         self._go(mapping.get(label, "chat"))
@@ -612,8 +601,9 @@ I also added a regression test for the missing check.
 
         self.sidebar.set_account(self.DEMO_NAME, self.DEMO_MAIL,
                                  self.DEMO_INITIALS)
-        self._account = account_mod.Account(
-            email=self.DEMO_MAIL, has_refresh_token=True)
+        self._account = LocalIdentity(name=self.DEMO_NAME,
+                                      email=self.DEMO_MAIL,
+                                      initials=self.DEMO_INITIALS)
 
         now = _time.time()
         titles = [
@@ -774,28 +764,19 @@ END:VCALENDAR
         if shown_page:
             self._go(shown_page)
 
-    def _show_account(self) -> None:
-        if self.account_page is not None:
-            self._go("account")
-            self.account_page.refresh()
-        else:
-            self._show_options()
+    def _local_identity(self) -> "LocalIdentity":
+        """Who this app belongs to: the local user, not a vendor account."""
+        import getpass  # noqa: PLC0415
+        import os  # noqa: PLC0415
 
-    def _on_signed_in(self, acc) -> None:
-        self._account = acc
-        self.sidebar.set_account(acc.display_name, acc.email or "Not signed in",
-                                 acc.initials)
-        self._refresh_sidebar()
-
-    def _on_signed_out(self) -> None:
-        self._account = account_mod.load_account()
-
-        # A surface exists only if the selected engine can back it. This is the
-        # promise of the adapter seam: switching engines changes what the app
-        # offers, not just who answers.
-        self._pages_for_engine = pages_for(engine)
-        self.sidebar.set_account("Mantel", "Not signed in", "?")
-        self._refresh_sidebar()
+        try:
+            name = getpass.getuser()
+        except Exception:  # noqa: BLE001
+            name = os.environ.get("USER", "you")
+        display = (name.replace(".", " ").replace("_", " ").title()
+                   or "You")
+        initials = "".join(part[:1] for part in display.split()[:2]).upper()
+        return LocalIdentity(name=display, email="", initials=initials or "?")
 
     # -- theme --------------------------------------------------------------
     def _set_theme(self, key: str) -> None:
@@ -858,7 +839,6 @@ END:VCALENDAR
             [("Attach files…", self._attach_files),
              ("Take a screenshot", self._attach_screenshot),
              ("Add a folder…", self.pick_workspace),
-             ("Connectors", lambda: self._go("connectors")),
              ("Skills", lambda: self._go("skills")),
              ("Schedules", lambda: self._go("schedule")),
              ("Remote control", lambda: self._go("settings"))],
@@ -997,13 +977,17 @@ END:VCALENDAR
         dialog.select_folder(self, None, done)
 
     def _trust_workspace(self, folder: str) -> None:
-        """Ask whether the agent may work in this folder, and record it."""
-        if permissions.is_trusted(folder):
+        """Ask whether the agent may work in this folder.
+
+        Trust is per session and per folder: there is no vendor permission file
+        to write, and the engine's own approval gate is the real boundary.
+        """
+        if folder in self._trusted_folders:
             return
         dialog = Adw.MessageDialog(
             transient_for=self, heading="Allow the agent to work in this folder?",
             body=("The agent will be able to read and change files under "
-                  f"{folder}. You can change this later in Settings."))
+                  f"{folder}, subject to the approval prompts."))
         dialog.add_response("deny", "Not now")
         dialog.add_response("allow", "Allow")
         dialog.set_response_appearance("allow", Adw.ResponseAppearance.SUGGESTED)
@@ -1011,8 +995,7 @@ END:VCALENDAR
         def on_response(dlg, response):
             if response != "allow":
                 return
-            permissions.trust_folder(folder)
-            permissions.allow_folder(folder)
+            self._trusted_folders.add(folder)
 
         dialog.connect("response", on_response)
         dialog.present()
@@ -1368,7 +1351,6 @@ END:VCALENDAR
         """Push real state into the dashboard."""
         if self.home is None:
             return
-        from app import mcp as mcp_mod  # noqa: PLC0415
         from app import skills as skills_mod  # noqa: PLC0415
 
         models = []
@@ -1383,10 +1365,6 @@ END:VCALENDAR
             models = [{"icon": "gemini_spark", "name": "No models",
                        "sub": "engine not found", "grade": "—"}]
 
-        try:
-            servers = mcp_mod.list_servers()
-        except Exception:  # noqa: BLE001
-            servers = []
         try:
             available = skills_mod.list_skills()
         except Exception:  # noqa: BLE001
@@ -1412,7 +1390,6 @@ END:VCALENDAR
         stats = [
             ("forum", str(len(self.store.list())), "Chats"),
             ("memory", str(len(models)), "Models"),
-            ("extension", str(len(servers)), "Connectors"),
             ("notes_spark", str(len(available)), "Skills"),
         ]
         signature = (tuple(m["name"] for m in models), tuple(stats),
@@ -1687,10 +1664,8 @@ END:VCALENDAR
         add("engine-status", lambda *_: self._show_engine_status())
         add("shortcuts", lambda *_: self._show_shortcuts())
         add("about", lambda *_: self._show_about())
-        add("connectors", lambda *_: self._go("connectors"))
         add("skills", lambda *_: self._go("skills"))
         add("schedule", lambda *_: self._go("schedule"))
-        add("account", lambda *_: self._show_account())
 
     def _show_engine_status(self) -> None:
         binary = self.engine.binary or "not found"

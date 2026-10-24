@@ -13,13 +13,10 @@ import gi
 gi.require_version("Gtk", "4.0")
 from gi.repository import Gtk  # noqa: E402
 
-from app import account as account_mod
 from app import engine as engine_mod
 from app import calendar as calendar_store
 from app import knowledge as knowledge_store
 from app import nudges as nudges_store
-from app import permissions
-from app import remote
 from app import session as session_mod
 from app import theme  # noqa: E402
 from app.cards import (body, card, divider, eyebrow, hspacer, icon_square,
@@ -127,12 +124,6 @@ class SettingsPage(Gtk.Box):
         self.append(self._agent_card())
         self.append(spacer(height=22))
 
-        if "remote" in self._capabilities:
-            self.append(section_title("Connectivity", "devices"))
-            self.append(spacer(height=12))
-            self.append(self._remote_card())
-            self.append(spacer(height=22))
-
         self.append(section_title("Knowledge", "notes_spark"))
         self.append(spacer(height=12))
         self.append(self._knowledge_card())
@@ -212,21 +203,10 @@ class SettingsPage(Gtk.Box):
                           efforts))
         inner.append(divider())
 
-        if "permission_file" in self._capabilities:
-            writable = permissions.writable()
-            state = Gtk.Label(label="Writable" if writable else "Read-only")
-            state.add_css_class("chip-grade")
-            inner.append(_row(
-                "save", "Permission file",
-                f"{permissions.config_path()} — "
-                + ("grants are saved here." if writable
-                   else "this machine blocks writes, so approvals cannot persist."),
-                state))
         panel.append(inner)
         return panel
 
-    def _remote_card(self) -> Gtk.Widget:
-        """Remote control: drive this machine's agent from a phone."""
+    def _agent_card(self) -> Gtk.Widget:
         panel = card()
         inner = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
         for m in ("start", "end"):
@@ -234,47 +214,36 @@ class SettingsPage(Gtk.Box):
         inner.set_margin_top(6)
         inner.set_margin_bottom(6)
 
-        status = remote.status() if remote.available() else None
-        self._remote_status = status
+        if "cli_flags" in self._capabilities:
+            modes = segmented(
+                [m.label for m in session_mod.APPROVAL_MODES],
+                active=[m.key for m in session_mod.APPROVAL_MODES].index(
+                    self._approval)
+                if self._approval in [m.key for m in session_mod.APPROVAL_MODES]
+                else 0,
+                on_select=self._on_approval)
+            inner.append(_row("lock", "Approval mode",
+                              "What the agent may do without asking you.", modes))
+        else:
+            enforced = Gtk.Label(label="Enforced per call")
+            enforced.add_css_class("chip-grade")
+            inner.append(_row(
+                "lock", "Approvals",
+                "This engine asks before it acts; every tool call is gated by "
+                "the client's approval cards.", enforced))
+        inner.append(divider())
 
-        control = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
-        state_chip = Gtk.Label(label=status.label if status else "Unavailable")
-        state_chip.add_css_class("chip-grade")
-        control.append(state_chip)
+        efforts = segmented(["Low", "Medium", "High", "Max"],
+                            active={"low": 0, "medium": 1, "high": 2,
+                                    "xhigh": 2, "max": 3}.get(self._effort, 1),
+                            on_select=self._on_effort)
+        inner.append(_row("bolt", "Reasoning effort",
+                          "How much thinking the model spends per turn.",
+                          efforts))
+        inner.append(divider())
 
-        button = pill_button(
-            "Stop" if (status and status.running) else "Start",
-            "stop" if (status and status.running) else "play_arrow",
-            on_click=self._toggle_remote)
-        control.append(button)
-
-        detail = ("Let the Gemini app on your phone reach this machine. "
-                  "Pairing uses the same Google account.")
-        if status and status.instance:
-            detail += f" Instance: {status.instance}."
-        inner.append(_row("devices", "Remote control", detail, control))
         panel.append(inner)
         return panel
-
-    def _toggle_remote(self) -> None:
-        status = self._remote_status
-        if status and status.running:
-            ok, output = remote.stop()
-        else:
-            ok, output = remote.start()
-        if not ok:
-            # the daemon needs to write its token into the engine's config, so
-            # a locked-down home is the usual cause
-            dialog = Adw.MessageDialog(
-                transient_for=self.get_root(),
-                heading="Remote control could not start",
-                body=(output or "The engine did not report why.").strip()[:400])
-            dialog.add_response("close", "Close")
-            dialog.present()
-            return
-        root = self.get_root()
-        if root is not None and hasattr(root, "_refresh_settings"):
-            root._refresh_settings()
 
     def _knowledge_card(self) -> Gtk.Widget:
         """Folders the agent may read: local notes, read-only, indexed."""
@@ -521,9 +490,8 @@ class SettingsPage(Gtk.Box):
         inner.append(divider())
 
         about = pill_button("About", "info", on_click=self._callbacks["about"])
-        acc = account_mod.load_account()
         inner.append(_row("info", "About this app",
-                          f"Signed in as {acc.email or 'nobody'}.", about))
+                          "Mantel, local-first. No account required.", about))
         inner.append(divider())
 
         engine = Gtk.Label(label=f"{len(self._models)} models")

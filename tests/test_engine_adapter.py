@@ -1,4 +1,4 @@
-"""The engine adapter contract, run against the Pi adapter and the fake engine.
+"""The engine adapter contract, run against the Pi and Gemini adapters.
 
 This is the suite that defines "an engine is supported" (docs/plan/pi-engine.md,
 M0/M1). It needs no real engine and no credentials: `tests/fixtures/fake_pi.py`
@@ -24,6 +24,9 @@ from gi.repository import GLib  # noqa: E402
 
 from app import engine as engine_mod  # noqa: E402
 from app.engines import base  # noqa: E402
+
+sys.path.insert(0, str(ROOT / "tests" / "fixtures"))
+from fake_gemini import Fake as FakeGemini, serve as serve_gemini  # noqa: E402
 
 FAKE_PI = ROOT / "tests" / "fixtures" / "fake_pi.py"
 
@@ -53,6 +56,17 @@ def collect(turn, timeout: int = 20) -> dict:
 
 def pi_engine() -> engine_mod.Engine:
     return engine_mod.Engine(adapter="pi", binary=str(FAKE_PI))
+
+
+def gemini_engine(base: str) -> engine_mod.Engine:
+    """The provider engine, pointed at the local fake API."""
+    os.environ["GEMINI_API_KEY"] = "contract-test-key"
+    os.environ["MANTEL_GEMINI_BASE"] = base
+    try:
+        return engine_mod.Engine(adapter="gemini")
+    finally:
+        os.environ.pop("GEMINI_API_KEY", None)
+        os.environ.pop("MANTEL_GEMINI_BASE", None)
 
 
 # --- the tests -------------------------------------------------------------
@@ -385,42 +399,98 @@ def test_capability_gating(failures: list[str]) -> None:
     from app import session as session_mod  # noqa: PLC0415
     from app.window import pages_for  # noqa: PLC0415
 
-    legacy = engine_mod.Engine(adapter="legacy")
     pi = pi_engine()
 
-    for capability in ("account", "connectors", "skills", "permission_file",
-                       "cli_flags"):
-        if not legacy.supports(capability):
-            failures.append(f"the legacy engine should advertise {capability}")
+    # the vendor surfaces are gone from the repo, so no engine advertises them
+    for capability in ("account", "connectors", "permission_file", "cli_flags"):
         if pi.supports(capability):
             failures.append(f"pi should not advertise {capability}")
-    for capability in ("approvals", "sessions", "steering", "compaction"):
+    for capability in ("chat", "tools", "approvals", "sessions", "steering",
+                       "compaction"):
         if not pi.supports(capability):
             failures.append(f"pi should advertise {capability}")
 
-    # approval modes are CLI flags: they must never reach an engine that would
-    # reject them
+    # approval modes are CLI flags: no engine accepts them any more
     pi_flags = session_mod.Session(pi, mode=session_mod.MODE_TASK,
                                    approval="full").flags()
-    legacy_flags = session_mod.Session(legacy, mode=session_mod.MODE_TASK,
-                                       approval="full").flags()
-    print(f"  flags: pi={pi_flags} legacy={legacy_flags}")
+    print(f"  flags: pi={pi_flags}")
     if pi_flags:
-        failures.append(f"vendor approval flags leaked to pi: {pi_flags}")
-    if not legacy_flags:
-        failures.append("legacy full access should pass its own flags")
+        failures.append(f"vendor approval flags still produced: {pi_flags}")
 
     pi_pages = [page[0] for page in pages_for(pi)]
-    legacy_pages = [page[0] for page in pages_for(legacy)]
-    print(f"  pages: pi={pi_pages} legacy={legacy_pages}")
+    print(f"  pages: pi={pi_pages}")
     for vendor_page in ("connectors", "skills"):
         if vendor_page in pi_pages:
             failures.append(f"{vendor_page} shown for an engine without it")
-        if vendor_page not in legacy_pages:
-            failures.append(f"{vendor_page} missing for the legacy engine")
     for shared in ("chat", "tasks", "create", "schedule"):
         if shared not in pi_pages:
             failures.append(f"{shared} missing for pi")
+
+
+def test_gemini_contract(failures: list[str]) -> None:
+    """The shared contract, run against the Gemini API engine.
+
+    Not every capability applies to a provider engine (no vendor session ids,
+    no steering, no compaction), so this asserts the part every adapter must
+    honour: a Turn that streams deltas and settles with a well-formed result,
+    a readable error path, cancellation, a model list, and honest capabilities.
+    """
+    print("gemini: contract")
+    server, base = serve_gemini()
+    try:
+        engine = gemini_engine(base)
+        if not engine.available:
+            failures.append("gemini: the engine reports unavailable with a key")
+        models = engine.models()
+        if not models or not all(isinstance(m, tuple) and len(m) == 2
+                                 for m in models):
+            failures.append(f"gemini: models() shape is wrong: {models}")
+        print(f"  models: {models}")
+
+        FakeGemini.tool_mode = "none"
+        turn = engine.run(prompt="Say hello", model="gemini-2.0-flash")
+        seen = collect(turn)
+        result = seen["finished"] or {}
+        print(f"  deltas={''.join(seen['deltas'])!r} "
+              f"status={result.get('status')!r}")
+        if "".join(seen["deltas"]) != "Hello world":
+            failures.append(f"gemini: deltas did not stream: {seen['deltas']}")
+        if result.get("status") != "SUCCESS":
+            failures.append(f"gemini: turn did not succeed: {result}")
+        for key in ("status", "text", "error", "usage", "denied"):
+            if key not in result:
+                failures.append(f"gemini: result is missing {key!r}")
+
+        # the provider's own error message reaches the user
+        FakeGemini.fail_status = 401
+        seen = collect(engine.run(prompt="fail please"))
+        FakeGemini.fail_status = 0
+        failed = seen["finished"] or {}
+        if failed.get("status") != "ERROR" or "key" not in str(
+                failed.get("error", "")).lower():
+            failures.append(f"gemini: error mapping is wrong: {failed}")
+
+        # cancellation settles the turn rather than leaving it running
+        FakeGemini.tool_mode = "none"
+        turn = engine.run(prompt="cancel me")
+        turn.cancel()
+        seen = collect(turn, timeout=15)
+        if seen["finished"] is None and seen["failed"] is None:
+            failures.append("gemini: a cancelled turn never settled")
+
+        caps = engine.capabilities
+        if not engine.supports(engine_mod.CHAT):
+            failures.append("gemini: must advertise chat")
+        if caps - {
+                engine_mod.CHAT, engine_mod.TOOLS, engine_mod.APPROVALS,
+                engine_mod.SESSIONS, engine_mod.STEERING,
+                engine_mod.COMPACTION, engine_mod.IMAGES,
+                engine_mod.REMOTE, engine_mod.ACCOUNT,
+                engine_mod.CONNECTORS, engine_mod.SKILLS,
+                engine_mod.PERMISSION_FILE, engine_mod.CLI_FLAGS}:
+            failures.append(f"gemini: unknown capabilities: {caps}")
+    finally:
+        server.shutdown()
 
 
 def main() -> int:
@@ -436,7 +506,7 @@ def main() -> int:
                  test_facade, test_missing_engine,
                  test_capability_gating, test_transcript_reconciliation,
                  test_session_durability, test_steering,
-                 test_shipped_extension_loads):
+                 test_shipped_extension_loads, test_gemini_contract):
         print(f"\n  {test.__name__}")
         test(failures)
 
