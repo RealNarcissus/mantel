@@ -34,6 +34,10 @@ a native Linux surface — without owning the intelligence itself.
 - **Today** is the home screen: what is due (overdue first), what is next this
   week, what the agent remembers, and the agent itself — with a quick-add box
   that turns "pay the invoice tomorrow at 5pm" into a dated task.
+- **Knowledge connectors**: point the agent at folders of your own notes and
+  it retrieves relevant passages for each turn — local, read-only, incremental
+  by mtime, capped so a large vault stays cheap. Lexical retrieval, not
+  embeddings: it says so rather than pretending.
 - **Quiet proactivity**: bounded nudges — something starting soon, too much
   late, one morning brief — capped by a daily budget (default three) and quiet
   hours, both configurable in Settings. The app is allowed to volunteer

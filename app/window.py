@@ -330,6 +330,7 @@ class Window(Adw.ApplicationWindow):
                 on_about=self._show_about,
                 on_calendar=self._refresh_today,
                 on_nudges=self._nudges_changed,
+                on_knowledge=self._knowledge_changed,
                 scheme="light",
                 approval=self.approval,
                 effort=self.effort,
@@ -434,6 +435,10 @@ class Window(Adw.ApplicationWindow):
         self._refresh_today()
         self._refresh_review()
 
+    def _knowledge_changed(self) -> None:
+        """Index changed: the next turn sees the new notes, nothing to refresh."""
+        self._refresh_settings()
+
     def _refresh_review(self) -> None:
         page = getattr(self, "review_page", None)
         if page is not None:
@@ -514,9 +519,17 @@ class Window(Adw.ApplicationWindow):
         self._refresh_today()
 
     def _refresh_settings(self) -> None:
-        """Rebuild the Settings page after a change made on it."""
+        """Rebuild the Settings cards after a change made on them.
+
+        The page rebuilds itself in place: replacing the whole page in the
+        stack left an empty slot behind, which is how this was first written
+        and how screenshots went blank.
+        """
         page = getattr(self, "settings", None)
         if page is None:
+            return
+        if hasattr(page, "refresh"):
+            page.refresh()
             return
         from app.pages.settings import SettingsPage  # noqa: PLC0415
 
@@ -534,6 +547,7 @@ class Window(Adw.ApplicationWindow):
             on_about=self._show_about,
             on_calendar=self._refresh_today,
             on_nudges=self._nudges_changed,
+            on_knowledge=self._knowledge_changed,
             scheme="light",
             approval=self.approval,
             effort=self.effort,
@@ -633,6 +647,21 @@ I also added a regression test for the missing check.
             page = getattr(self, "plugins_page", None)
             if page is not None:
                 page.refresh()
+        except Exception:  # noqa: BLE001
+            pass
+
+        try:
+            from app import knowledge as knowledge_mod  # noqa: PLC0415
+
+            notes = _Path(_tempfile.mkdtemp(prefix="mantel-demo-notes-"))
+            (notes / "week.md").write_text(
+                "# Week plan\n\nDeep work before noon. Meetings after lunch. "
+                "Release on Thursday if CI is green.\n")
+            (notes / "design.md").write_text(
+                "# Design notes\n\nThe rail is the only chrome. Content gets "
+                "the width. Numbers are monospace on purpose.\n")
+            knowledge_mod.add_source(str(notes))
+            self._refresh_settings()
         except Exception:  # noqa: BLE001
             pass
 
@@ -1037,6 +1066,21 @@ END:VCALENDAR
             page = getattr(self, "plugins_page", None)
             if page is not None:
                 page.refresh()
+        except Exception:  # noqa: BLE001
+            pass
+
+        try:
+            from app import knowledge as knowledge_mod  # noqa: PLC0415
+
+            notes = _Path(_tempfile.mkdtemp(prefix="mantel-demo-notes-"))
+            (notes / "week.md").write_text(
+                "# Week plan\n\nDeep work before noon. Meetings after lunch. "
+                "Release on Thursday if CI is green.\n")
+            (notes / "design.md").write_text(
+                "# Design notes\n\nThe rail is the only chrome. Content gets "
+                "the width. Numbers are monospace on purpose.\n")
+            knowledge_mod.add_source(str(notes))
+            self._refresh_settings()
         except Exception:  # noqa: BLE001
             pass
 

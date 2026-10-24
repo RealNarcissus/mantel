@@ -16,6 +16,7 @@ from gi.repository import Gtk  # noqa: E402
 from app import account as account_mod
 from app import engine as engine_mod
 from app import calendar as calendar_store
+from app import knowledge as knowledge_store
 from app import nudges as nudges_store
 from app import permissions
 from app import remote
@@ -64,6 +65,7 @@ class SettingsPage(Gtk.Box):
                  on_about: Callable[[], None] | None = None,
                  on_calendar: Callable[[], None] | None = None,
                  on_nudges: Callable[[], None] | None = None,
+                 on_knowledge: Callable[[], None] | None = None,
                  scheme: str = "light",
                  approval: str = "ask",
                  effort: str = "medium",
@@ -84,6 +86,7 @@ class SettingsPage(Gtk.Box):
             "about": on_about,
             "calendar": on_calendar,
             "nudges": on_nudges,
+            "knowledge": on_knowledge,
         }
         self._scheme = scheme
         self._approval = approval
@@ -92,6 +95,17 @@ class SettingsPage(Gtk.Box):
         self._models = models or []
         self._capabilities = frozenset(capabilities or ())
         self._engine_name = engine_name
+
+        self._build()
+
+    def refresh(self) -> None:
+        """Re-read the stores this page summarises (settings, not layout)."""
+        self._build()
+
+    def _build(self) -> None:
+        """(Re)build the page, so sources edited elsewhere show up."""
+        while (child := self.get_first_child()) is not None:
+            self.remove(child)
 
         head = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
         titles = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
@@ -119,6 +133,11 @@ class SettingsPage(Gtk.Box):
             self.append(self._remote_card())
             self.append(spacer(height=22))
 
+        self.append(section_title("Knowledge", "notes_spark"))
+        self.append(spacer(height=12))
+        self.append(self._knowledge_card())
+        self.append(spacer(height=22))
+
         self.append(section_title("Proactivity", "notifications"))
         self.append(spacer(height=12))
         self.append(self._nudges_card())
@@ -137,7 +156,7 @@ class SettingsPage(Gtk.Box):
         self.append(section_title("About", "info"))
         self.append(spacer(height=12))
         self.append(self._about_card())
-
+    # -- cards --------------------------------------------------------------
     # -- cards --------------------------------------------------------------
     def _appearance_card(self) -> Gtk.Widget:
         panel = card()
@@ -256,6 +275,84 @@ class SettingsPage(Gtk.Box):
         root = self.get_root()
         if root is not None and hasattr(root, "_refresh_settings"):
             root._refresh_settings()
+
+    def _knowledge_card(self) -> Gtk.Widget:
+        """Folders the agent may read: local notes, read-only, indexed."""
+        panel = card()
+        inner = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+        for margin in ("start", "end"):
+            getattr(inner, f"set_margin_{margin}")(18)
+        inner.set_margin_top(6)
+        inner.set_margin_bottom(6)
+
+        stats = knowledge_store.stats()
+        buttons = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        buttons.append(pill_button("Add folder", "add",
+                                   on_click=self._add_knowledge))
+        reindex = Gtk.Button(label="Reindex")
+        reindex.add_css_class("chip-grade")
+        reindex.connect("clicked", lambda _b: self._reindex_knowledge())
+        buttons.append(reindex)
+        inner.append(_row(
+            "notes_spark", "Notes folders",
+            f"{stats['files']} files · {stats['chunks']} passages indexed. "
+            "Read-only; stays on this machine.", buttons))
+
+        sources = knowledge_store.sources()
+        inner.append(divider())
+        if not sources:
+            empty = Gtk.Label(label="No folders indexed yet.", xalign=0)
+            empty.add_css_class("metric-sub")
+            empty.set_margin_top(6)
+            empty.set_margin_bottom(6)
+            inner.append(empty)
+        for source in sources:
+            line = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+            line.set_margin_top(6)
+            line.set_margin_bottom(6)
+            label = Gtk.Label(label=source, xalign=0)
+            label.add_css_class("metric-sub")
+            label.set_ellipsize(3)
+            label.set_hexpand(True)
+            line.append(label)
+            remove = Gtk.Button(label="Remove")
+            remove.add_css_class("chip-grade")
+            remove.connect("clicked",
+                           lambda _b, s=source: self._remove_knowledge(s))
+            line.append(remove)
+            inner.append(line)
+        panel.append(inner)
+        return panel
+
+    def _add_knowledge(self) -> None:
+        dialog = Gtk.FileDialog()
+        dialog.set_title("Choose a folder of notes")
+        from gi.repository import GLib  # noqa: PLC0415
+
+        def done(file_dialog, result):
+            try:
+                folder = file_dialog.select_folder_finish(result)
+            except GLib.Error:
+                return
+            path = folder.get_path() if folder is not None else None
+            if path:
+                knowledge_store.add_source(path)
+                self._knowledge_changed()
+
+        dialog.select_folder(self.get_root(), None, done)
+
+    def _remove_knowledge(self, source: str) -> None:
+        knowledge_store.remove_source(source)
+        self._knowledge_changed()
+
+    def _reindex_knowledge(self) -> None:
+        knowledge_store.sync(force=True)
+        self._knowledge_changed()
+
+    def _knowledge_changed(self) -> None:
+        callback = self._callbacks.get("knowledge")
+        if callback:
+            callback()
 
     def _nudges_card(self) -> Gtk.Widget:
         """The interruption budget: on/off, how many, and when the brief lands."""
